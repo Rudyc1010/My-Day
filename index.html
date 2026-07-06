@@ -103,8 +103,13 @@
   </div>
 
   <div class="card" id="dailyCard" style="display:none">
-    <h2>Daily tasks</h2>
+    <h2>Today's tasks</h2>
     <div id="dailyList"></div>
+  </div>
+
+  <div class="card" id="upcomingCard" style="display:none">
+    <h2>Coming up</h2>
+    <div id="upcomingList"></div>
   </div>
 
   <div class="card" id="checkinCard" style="display:none">
@@ -122,11 +127,16 @@
     <h3>New task</h3>
     <label>What is it?</label>
     <input id="addTitle" placeholder="e.g. Gym, Take medication, Call Mom">
-    <label>Type</label>
-    <select id="addKind">
-      <option value="daily">Daily task (repeats every day, tracks streak)</option>
-      <option value="scheduled">Scheduled (appears on today's timeline)</option>
+    <label>Repeats</label>
+    <select id="addRec">
+      <option value="daily">Every day (tracks streak)</option>
+      <option value="weekly">Every week</option>
+      <option value="biweekly">Every 2 weeks</option>
+      <option value="monthly">Every month</option>
+      <option value="once">One time only</option>
     </select>
+    <label>Date (the first — or only — day it happens)</label>
+    <input id="addDate" type="date">
     <label>Time of day (optional — when it shows on the schedule)</label>
     <input id="addTime" type="time">
     <label>Nag me if not done by (optional — sends a push)</label>
@@ -232,10 +242,32 @@ function streak(id) {
   return n;
 }
 
+function isDueToday(t) {
+  const rec = t.recurrence || 'daily';
+  if (rec === 'daily') return true;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const anchor = t.anchor_date ? new Date(t.anchor_date + 'T00:00:00') : today;
+  const diff = Math.round((today - anchor) / 864e5);
+  if (rec === 'once') return diff >= 0 && !comps.some(c => c.task_id === t.id);
+  if (diff < 0) return false;
+  if (rec === 'weekly') return today.getDay() === anchor.getDay();
+  if (rec === 'biweekly') return today.getDay() === anchor.getDay() && Math.floor(diff / 7) % 2 === 0;
+  if (rec === 'monthly') {
+    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    return today.getDate() === Math.min(anchor.getDate(), last);
+  }
+  return false;
+}
+
 function render() {
-  const sched = tasks.filter(t => t.kind === 'scheduled');
-  const daily = tasks.filter(t => t.kind === 'daily');
+  const due = tasks.filter(t => t.kind !== 'checkin' && isDueToday(t));
+  const sched = due.filter(t => t.time_of_day);
+  const daily = due.filter(t => !t.time_of_day);
   const checkin = tasks.find(t => t.kind === 'checkin');
+  const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
+  const upcoming5 = tasks.filter(t => t.kind !== 'checkin' && t.recurrence === 'once'
+      && new Date(t.anchor_date + 'T00:00:00') > midnight && !comps.some(c => c.task_id === t.id))
+    .sort((a, b) => a.anchor_date < b.anchor_date ? -1 : 1).slice(0, 5);
 
   // Now / next
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
@@ -253,6 +285,17 @@ function render() {
 
   renderList('scheduleCard', 'scheduleList', sched, true);
   renderList('dailyCard', 'dailyList', daily, false);
+
+  const uc = document.getElementById('upcomingCard');
+  if (upcoming5.length) {
+    uc.style.display = 'block';
+    document.getElementById('upcomingList').innerHTML = upcoming5.map(t =>
+      '<div class="task"><span class="time">' +
+      new Date(t.anchor_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      '</span><span class="title">' + esc(t.title) +
+      (t.time_of_day ? ' <span class="muted">at ' + fmtTime(t.time_of_day) + '</span>' : '') +
+      '</span></div>').join('');
+  } else uc.style.display = 'none';
 
   // Check-in
   const cc = document.getElementById('checkinCard');
@@ -280,13 +323,16 @@ function renderList(cardId, listId, arr, showTime) {
   card.style.display = 'block';
   document.getElementById(listId).innerHTML = arr.map(t => {
     const done = doneToday(t.id);
-    const s = t.kind === 'daily' ? streak(t.id) : 0;
+    const rec = t.recurrence || 'daily';
+    const s = rec === 'daily' ? streak(t.id) : 0;
+    const recLabel = { weekly: 'weekly', biweekly: 'every 2 wks', monthly: 'monthly', once: 'one-time' }[rec];
     return '<div class="task' + (done ? ' done' : '') + '">' +
       '<button class="check" onclick="toggle(\'' + t.id + '\')">&#10003;</button>' +
       (showTime ? '<span class="time">' + (fmtTime(t.time_of_day) || '—') + '</span>' : '') +
       '<span class="title">' + esc(t.title) +
+      (recLabel ? ' <span class="muted" style="font-size:12px">· ' + recLabel + '</span>' : '') +
       (t.nag_time && !done ? ' <span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') + '</span>' +
-      (t.kind === 'daily' && s > 0 ? '<span class="streak">' + s + ' &#128293;</span>' : '') +
+      (s > 0 ? '<span class="streak">' + s + ' &#128293;</span>' : '') +
       '</div>';
   }).join('');
 }
@@ -315,13 +361,18 @@ async function checkinAnswer(id, val) {
 }
 
 // --- Add task ---
-function openAdd() { document.getElementById('addModal').classList.add('open'); }
+function openAdd() {
+  document.getElementById('addDate').value = todayStr();
+  document.getElementById('addModal').classList.add('open');
+}
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 async function saveTask() {
   const title = document.getElementById('addTitle').value.trim();
   if (!title) { toast('Give it a name'); return; }
   const body = {
-    title, kind: document.getElementById('addKind').value,
+    title, kind: 'task',
+    recurrence: document.getElementById('addRec').value,
+    anchor_date: document.getElementById('addDate').value || todayStr(),
     time_of_day: document.getElementById('addTime').value || null,
     nag_time: document.getElementById('addNag').value || null
   };
@@ -342,7 +393,7 @@ function openSettings() {
   document.getElementById('setNtfy').value = c.ntfy;
   document.getElementById('manageList').innerHTML = tasks.length
     ? tasks.map(t => '<div class="manage-item"><span>' + esc(t.title) +
-        ' <span class="muted">(' + t.kind + ')</span></span>' +
+        ' <span class="muted">(' + (t.kind === 'checkin' ? 'check-in' : (t.recurrence || 'daily')) + ')</span></span>' +
         '<button class="del" onclick="delTask(\'' + t.id + '\')">&#10005;</button></div>').join('')
     : 'No tasks yet.';
   document.getElementById('settingsModal').classList.add('open');
