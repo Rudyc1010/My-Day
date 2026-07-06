@@ -22,5 +22,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          TZ_NAME: "America/Los Angeles"   # <-- change if you're not in US Central time
+          TZ_NAME: "America/Los_Angeles"   # <-- change if you're not in US Central time
         run: python checker.py
