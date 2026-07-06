@@ -1,0 +1,26 @@
+# IMPORTANT: in your GitHub repo this file must be created at the path:
+#   .github/workflows/checker.yml
+# (The setup guide walks you through it.)
+
+name: Overdue task checker
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes
+  workflow_dispatch: {}       # lets you run it manually with a button
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check for overdue tasks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TZ_NAME: "America/Chicago"   # <-- change if you're not in US Central time
+        run: python checker.py
