@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>My Day</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Day">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root {
+    --bg: #0f1220; --card: #1a1f33; --card2: #232a45; --text: #eef0f8;
+    --muted: #8b92ad; --accent: #5b8cff; --green: #3ecf8e; --red: #ff6b6b;
+    --amber: #ffb347; --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 90px) 16px;
+    max-width: 560px; margin: 0 auto;
+  }
+  header { padding: 22px 4px 6px; display: flex; justify-content: space-between; align-items: flex-start; }
+  header h1 { font-size: 26px; font-weight: 700; }
+  header .date { color: var(--muted); font-size: 14px; margin-top: 3px; }
+  .gear { background: var(--card); border: none; color: var(--muted); font-size: 20px;
+          width: 42px; height: 42px; border-radius: 12px; cursor: pointer; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-top: 14px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+  .now-card { background: linear-gradient(135deg, #2a3b7a, #1c2547); }
+  .now-line { font-size: 18px; font-weight: 600; margin: 4px 0; }
+  .next-line { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .task { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .task:last-child { border-bottom: none; }
+  .task .time { color: var(--accent); font-size: 13px; font-weight: 600; min-width: 62px; }
+  .task .title { flex: 1; font-size: 16px; }
+  .task.done .title { text-decoration: line-through; color: var(--muted); }
+  .task .streak { font-size: 13px; color: var(--amber); min-width: 44px; text-align: right; }
+  .check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--muted);
+           background: none; cursor: pointer; flex-shrink: 0; font-size: 15px; color: transparent; }
+  .task.done .check { background: var(--green); border-color: var(--green); color: #08331f; }
+  .nag-badge { font-size: 11px; color: var(--red); }
+  .checkin-btns { display: flex; gap: 10px; margin-top: 10px; }
+  .checkin-btns button { flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 15px;
+                         font-weight: 600; cursor: pointer; }
+  .btn-yes { background: var(--green); color: #08331f; }
+  .btn-no { background: var(--card2); color: var(--text); }
+  .checkin-result { margin-top: 10px; font-size: 15px; }
+  .fab { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 20px); right: 20px;
+         width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white;
+         font-size: 30px; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none;
+              align-items: flex-end; justify-content: center; z-index: 10; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--card); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0;
+           padding: 22px 18px calc(env(safe-area-inset-bottom) + 22px); max-height: 85vh; overflow-y: auto; }
+  .modal h3 { margin-bottom: 14px; }
+  .modal label { display: block; color: var(--muted); font-size: 13px; margin: 12px 0 5px; }
+  .modal input, .modal select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
+                                background: var(--card2); color: var(--text); font-size: 16px; }
+  .modal .row-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .modal .row-btns button { flex: 1; padding: 13px; border-radius: 12px; border: none; font-size: 16px;
+                            font-weight: 600; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-ghost { background: var(--card2); color: var(--text); }
+  .btn-danger { background: none; border: none; color: var(--red); font-size: 14px; margin-top: 14px;
+                cursor: pointer; width: 100%; text-align: center; }
+  .manage-item { display: flex; align-items: center; justify-content: space-between;
+                 padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 15px; }
+  .manage-item .del { background: none; border: none; color: var(--red); font-size: 18px; cursor: pointer; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .setup-note { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 20px;
+                text-align: center; line-height: 1.5; }
+  .toast { position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%);
+           background: var(--card2); padding: 10px 18px; border-radius: 20px; font-size: 14px;
+           display: none; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="greeting">My Day</h1>
+    <div class="date" id="dateLine"></div>
+  </div>
+  <button class="gear" onclick="openSettings()">&#9881;</button>
+</header>
+
+<div id="setupNote" class="setup-note" style="display:none">
+  <strong>Welcome!</strong><br><span class="muted">Tap the gear icon above and paste in your Supabase URL and key to get started.</span>
+</div>
+
+<div id="app" style="display:none">
+  <div class="card now-card" id="nowCard" style="display:none">
+    <h2>Right now</h2>
+    <div class="now-line" id="nowLine"></div>
+    <div class="next-line" id="nextLine"></div>
+  </div>
+
+  <div class="card" id="scheduleCard" style="display:none">
+    <h2>Today's schedule</h2>
+    <div id="scheduleList"></div>
+  </div>
+
+  <div class="card" id="dailyCard" style="display:none">
+    <h2>Daily tasks</h2>
+    <div id="dailyList"></div>
+  </div>
+
+  <div class="card" id="checkinCard" style="display:none">
+    <h2>Evening check-in</h2>
+    <div id="checkinBody"></div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAdd()">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- Add task modal -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <h3>New task</h3>
+    <label>What is it?</label>
+    <input id="addTitle" placeholder="e.g. Gym, Take medication, Call Mom">
+    <label>Type</label>
+    <select id="addKind">
+      <option value="daily">Daily task (repeats every day, tracks streak)</option>
+      <option value="scheduled">Scheduled (appears on today's timeline)</option>
+    </select>
+    <label>Time of day (optional — when it shows on the schedule)</label>
+    <input id="addTime" type="time">
+    <label>Nag me if not done by (optional — sends a push)</label>
+    <input id="addNag" type="time">
+    <div class="row-btns">
+      <button class="btn-ghost" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label>Your first name</label>
+    <input id="setName" placeholder="Rudy">
+    <label>Supabase project URL</label>
+    <input id="setUrl" placeholder="https://xxxx.supabase.co">
+    <label>Supabase anon key</label>
+    <input id="setKey" placeholder="eyJhbGciOi...">
+    <label>ntfy topic name (for test pushes)</label>
+    <input id="setNtfy" placeholder="e.g. rudy-assistant-x7k2">
+    <div class="row-btns">
+      <button class="btn-ghost" onclick="testPush()">Test push</button>
+      <button class="btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+    <h3 style="margin-top:26px">Manage tasks</h3>
+    <div id="manageList" class="muted">Loading…</div>
+  </div>
+</div>
+
+<script>
+const LS = localStorage;
+const cfg = () => ({
+  url: LS.getItem('sb_url') || '', key: LS.getItem('sb_key') || '',
+  ntfy: LS.getItem('ntfy') || '', name: LS.getItem('name') || ''
+});
+const todayStr = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
+const fmtTime = t => {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  return ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + ap;
+};
+
+let tasks = [], comps = [];
+
+async function api(path, opts = {}) {
+  const c = cfg();
+  const r = await fetch(c.url + '/rest/v1/' + path, {
+    ...opts,
+    headers: {
+      'apikey': c.key, 'Authorization': 'Bearer ' + c.key,
+      'Content-Type': 'application/json', 'Prefer': 'return=representation',
+      ...(opts.headers || {})
+    }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? null : r.json();
+}
+
+async function load() {
+  const c = cfg();
+  document.getElementById('dateLine').textContent =
+    new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  const h = new Date().getHours();
+  const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = part + (c.name ? ', ' + c.name : '');
+
+  if (!c.url || !c.key) {
+    document.getElementById('setupNote').style.display = 'block';
+    return;
+  }
+  document.getElementById('setupNote').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  try {
+    const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
+    [tasks, comps] = await Promise.all([
+      api('tasks?active=eq.true&order=time_of_day.asc.nullslast'),
+      api('completions?day=gte.' + since)
+    ]);
+    render();
+  } catch (e) {
+    toast('Could not load — check settings. ' + e.message.slice(0, 80));
+  }
+}
+
+const doneToday = id => comps.find(x => x.task_id === id && x.day === todayStr());
+
+function streak(id) {
+  const days = new Set(comps.filter(x => x.task_id === id && x.value !== 'no').map(x => x.day));
+  let n = 0; const d = new Date();
+  if (!days.has(todayStr())) d.setDate(d.getDate() - 1); // streak can continue through yesterday
+  for (;;) {
+    const s = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (days.has(s)) { n++; d.setDate(d.getDate() - 1); } else break;
+  }
+  return n;
+}
+
+function render() {
+  const sched = tasks.filter(t => t.kind === 'scheduled');
+  const daily = tasks.filter(t => t.kind === 'daily');
+  const checkin = tasks.find(t => t.kind === 'checkin');
+
+  // Now / next
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const timed = sched.filter(t => t.time_of_day).map(t => ({...t, min: parseInt(t.time_of_day) * 60 + parseInt(t.time_of_day.split(':')[1])}));
+  const upcoming = timed.filter(t => t.min >= nowMin && !doneToday(t.id));
+  const current = [...timed].reverse().find(t => t.min <= nowMin && !doneToday(t.id));
+  const nc = document.getElementById('nowCard');
+  if (current || upcoming.length) {
+    nc.style.display = 'block';
+    document.getElementById('nowLine').textContent = current
+      ? current.title + ' (' + fmtTime(current.time_of_day) + ')' : 'Nothing due right now';
+    document.getElementById('nextLine').textContent = upcoming.length
+      ? 'Next: ' + upcoming[0].title + ' at ' + fmtTime(upcoming[0].time_of_day) : 'Nothing else scheduled today';
+  } else nc.style.display = 'none';
+
+  renderList('scheduleCard', 'scheduleList', sched, true);
+  renderList('dailyCard', 'dailyList', daily, false);
+
+  // Check-in
+  const cc = document.getElementById('checkinCard');
+  if (checkin) {
+    cc.style.display = 'block';
+    const done = doneToday(checkin.id);
+    const body = document.getElementById('checkinBody');
+    if (done) {
+      body.innerHTML = '<div class="checkin-result">' +
+        (done.value === 'yes'
+          ? '&#10003; Stayed under your limit today. Streak: <b style="color:var(--amber)">' + streak(checkin.id) + ' day(s) &#128293;</b>'
+          : 'Logged. Tomorrow is a fresh start.') + '</div>';
+    } else {
+      body.innerHTML = '<div class="muted">' + checkin.title + '</div>' +
+        '<div class="checkin-btns">' +
+        '<button class="btn-yes" onclick="checkinAnswer(\'' + checkin.id + '\',\'yes\')">Yes &#128170;</button>' +
+        '<button class="btn-no" onclick="checkinAnswer(\'' + checkin.id + '\',\'no\')">Not today</button></div>';
+    }
+  } else cc.style.display = 'none';
+}
+
+function renderList(cardId, listId, arr, showTime) {
+  const card = document.getElementById(cardId);
+  if (!arr.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById(listId).innerHTML = arr.map(t => {
+    const done = doneToday(t.id);
+    const s = t.kind === 'daily' ? streak(t.id) : 0;
+    return '<div class="task' + (done ? ' done' : '') + '">' +
+      '<button class="check" onclick="toggle(\'' + t.id + '\')">&#10003;</button>' +
+      (showTime ? '<span class="time">' + (fmtTime(t.time_of_day) || '—') + '</span>' : '') +
+      '<span class="title">' + esc(t.title) +
+      (t.nag_time && !done ? ' <span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') + '</span>' +
+      (t.kind === 'daily' && s > 0 ? '<span class="streak">' + s + ' &#128293;</span>' : '') +
+      '</div>';
+  }).join('');
+}
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+async function toggle(id) {
+  const done = doneToday(id);
+  try {
+    if (done) {
+      await api('completions?id=eq.' + done.id, { method: 'DELETE' });
+      comps = comps.filter(x => x.id !== done.id);
+    } else {
+      const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr() }) });
+      comps.push(rows[0]);
+    }
+    render();
+  } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+
+async function checkinAnswer(id, val) {
+  try {
+    const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr(), value: val }) });
+    comps.push(rows[0]); render();
+  } catch (e) { toast('Save failed'); }
+}
+
+// --- Add task ---
+function openAdd() { document.getElementById('addModal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+async function saveTask() {
+  const title = document.getElementById('addTitle').value.trim();
+  if (!title) { toast('Give it a name'); return; }
+  const body = {
+    title, kind: document.getElementById('addKind').value,
+    time_of_day: document.getElementById('addTime').value || null,
+    nag_time: document.getElementById('addNag').value || null
+  };
+  try {
+    const rows = await api('tasks', { method: 'POST', body: JSON.stringify(body) });
+    tasks.push(rows[0]); closeModal('addModal');
+    document.getElementById('addTitle').value = '';
+    render(); toast('Added');
+  } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+
+// --- Settings ---
+function openSettings() {
+  const c = cfg();
+  document.getElementById('setName').value = c.name;
+  document.getElementById('setUrl').value = c.url;
+  document.getElementById('setKey').value = c.key;
+  document.getElementById('setNtfy').value = c.ntfy;
+  document.getElementById('manageList').innerHTML = tasks.length
+    ? tasks.map(t => '<div class="manage-item"><span>' + esc(t.title) +
+        ' <span class="muted">(' + t.kind + ')</span></span>' +
+        '<button class="del" onclick="delTask(\'' + t.id + '\')">&#10005;</button></div>').join('')
+    : 'No tasks yet.';
+  document.getElementById('settingsModal').classList.add('open');
+}
+function saveSettings() {
+  LS.setItem('name', document.getElementById('setName').value.trim());
+  LS.setItem('sb_url', document.getElementById('setUrl').value.trim().replace(/\/$/, ''));
+  LS.setItem('sb_key', document.getElementById('setKey').value.trim());
+  LS.setItem('ntfy', document.getElementById('setNtfy').value.trim());
+  closeModal('settingsModal'); load();
+}
+async function delTask(id) {
+  if (!confirm('Delete this task?')) return;
+  try {
+    await api('tasks?id=eq.' + id, { method: 'DELETE' });
+    tasks = tasks.filter(t => t.id !== id);
+    openSettings(); render();
+  } catch (e) { toast('Delete failed'); }
+}
+async function testPush() {
+  const t = document.getElementById('setNtfy').value.trim();
+  if (!t) { toast('Enter a ntfy topic first'); return; }
+  try {
+    await fetch('https://ntfy.sh/' + t, { method: 'POST', body: 'Test from My Day — pushes are working!' });
+    toast('Sent! Check your notifications.');
+  } catch (e) { toast('Push failed'); }
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 3500);
+}
+
+// close modals on background tap
+document.querySelectorAll('.modal-bg').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+load();
+// refresh when app comes back to foreground
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>
