@@ -47,7 +47,7 @@
   .btn-yes { background: var(--green); color: #08331f; }
   .btn-no { background: var(--card2); color: var(--text); }
   .checkin-result { margin-top: 10px; font-size: 15px; }
-  .fab { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 20px); right: 20px;
+  .fab { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 78px); right: 20px;
          width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white;
          font-size: 30px; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none;
@@ -75,6 +75,32 @@
   .toast { position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%);
            background: var(--card2); padding: 10px 18px; border-radius: 20px; font-size: 14px;
            display: none; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(15,18,32,0.97);
+            border-top: 1px solid rgba(255,255,255,0.08); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  .tabbar button { flex: 1; background: none; border: none; color: var(--muted); font-size: 14px;
+                   padding: 14px 0 12px; cursor: pointer; }
+  .tabbar button.active { color: var(--accent); font-weight: 600; }
+  .task.skipped .title { color: var(--amber); }
+  .task.skipped .check { background: var(--amber); border-color: var(--amber); color: #3d2c00; }
+  .note-item { background: var(--card); border-radius: 12px; padding: 14px; margin-top: 10px;
+               font-size: 15px; white-space: pre-wrap; }
+  .note-meta { display: flex; justify-content: space-between; margin-top: 10px; color: var(--muted); font-size: 12px; }
+  .note-actions button { background: none; border: none; color: var(--accent); font-size: 13px;
+                         margin-left: 16px; cursor: pointer; }
+  .composer { width: 100%; min-height: 72px; padding: 12px; border-radius: 12px; border: 1px solid #333c5e;
+              background: var(--card2); color: var(--text); font-size: 16px; font-family: inherit; resize: vertical; }
+  .save-note { width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 12px;
+               background: var(--accent); color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0 2px; }
+  .chips button { background: var(--card); border: none; color: var(--text); padding: 9px 15px;
+                  border-radius: 18px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+  .chips button.active { background: var(--accent); color: white; }
+  .addrow { display: flex; gap: 8px; }
+  .addrow input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
+                  background: var(--card2); color: var(--text); font-size: 16px; }
+  .addrow > button { background: var(--accent); color: white; border: none; border-radius: 10px;
+                     padding: 0 18px; font-size: 22px; cursor: pointer; }
+  .item-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -118,7 +144,30 @@
   </div>
 </div>
 
-<button class="fab" onclick="openAdd()">+</button>
+<div id="notesTab" style="display:none">
+  <div class="card">
+    <h2>New note</h2>
+    <textarea id="noteBox" class="composer" placeholder="Jot anything — ideas, reminders, links…"></textarea>
+    <button class="save-note" onclick="addNote()">Save note</button>
+  </div>
+  <div id="notesList"></div>
+</div>
+
+<div id="listsTab" style="display:none">
+  <div class="chips" id="listChips"></div>
+  <div class="card">
+    <div class="addrow"><input id="itemBox" placeholder="Add item…"><button onclick="addItem()">+</button></div>
+    <div id="itemsList" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button id="tab-today" class="active" onclick="switchTab('today')">Today</button>
+  <button id="tab-notes" onclick="switchTab('notes')">Notes</button>
+  <button id="tab-lists" onclick="switchTab('lists')">Lists</button>
+</nav>
+
+<button class="fab" id="fab" onclick="openAdd()">+</button>
 <div class="toast" id="toast"></div>
 
 <!-- Add task modal -->
@@ -186,7 +235,19 @@ const fmtTime = t => {
   return ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + ap;
 };
 
-let tasks = [], comps = [];
+let tasks = [], comps = [], notes = [], items = [];
+let curTab = 'today', curList = LS.getItem('curList') || 'Groceries';
+
+function switchTab(t) {
+  curTab = t;
+  const c = cfg();
+  document.getElementById('app').style.display = (t === 'today' && c.url) ? 'block' : 'none';
+  document.getElementById('notesTab').style.display = t === 'notes' ? 'block' : 'none';
+  document.getElementById('listsTab').style.display = t === 'lists' ? 'block' : 'none';
+  ['today', 'notes', 'lists'].forEach(x =>
+    document.getElementById('tab-' + x).classList.toggle('active', x === t));
+  document.getElementById('fab').style.display = t === 'today' ? 'block' : 'none';
+}
 
 async function api(path, opts = {}) {
   const c = cfg();
@@ -215,15 +276,17 @@ async function load() {
     return;
   }
   document.getElementById('setupNote').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
+  if (curTab === 'today') document.getElementById('app').style.display = 'block';
 
   try {
     const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
-    [tasks, comps] = await Promise.all([
+    [tasks, comps, notes, items] = await Promise.all([
       api('tasks?active=eq.true&order=time_of_day.asc.nullslast'),
-      api('completions?day=gte.' + since)
+      api('completions?day=gte.' + since),
+      api('notes?order=created_at.desc&limit=200'),
+      api('list_items?order=created_at.asc')
     ]);
-    render();
+    render(); renderNotes(); renderLists();
   } catch (e) {
     toast('Could not load — check settings. ' + e.message.slice(0, 80));
   }
@@ -323,11 +386,12 @@ function renderList(cardId, listId, arr, showTime) {
   card.style.display = 'block';
   document.getElementById(listId).innerHTML = arr.map(t => {
     const done = doneToday(t.id);
+    const skipped = done && done.value === 'skip';
     const rec = t.recurrence || 'daily';
     const s = rec === 'daily' ? streak(t.id) : 0;
     const recLabel = { weekly: 'weekly', biweekly: 'every 2 wks', monthly: 'monthly', once: 'one-time' }[rec];
-    return '<div class="task' + (done ? ' done' : '') + '">' +
-      '<button class="check" onclick="toggle(\'' + t.id + '\')">&#10003;</button>' +
+    return '<div class="task' + (skipped ? ' skipped' : done ? ' done' : '') + '">' +
+      '<button class="check" onclick="toggle(\'' + t.id + '\')">' + (skipped ? '&#8211;' : '&#10003;') + '</button>' +
       (showTime ? '<span class="time">' + (fmtTime(t.time_of_day) || '—') + '</span>' : '') +
       '<span class="title">' + esc(t.title) +
       (recLabel ? ' <span class="muted" style="font-size:12px">· ' + recLabel + '</span>' : '') +
@@ -339,18 +403,106 @@ function renderList(cardId, listId, arr, showTime) {
 
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
 
+// tap cycles: blank -> done -> skipped -> blank
 async function toggle(id) {
   const done = doneToday(id);
   try {
-    if (done) {
-      await api('completions?id=eq.' + done.id, { method: 'DELETE' });
-      comps = comps.filter(x => x.id !== done.id);
-    } else {
+    if (!done) {
       const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr() }) });
       comps.push(rows[0]);
+    } else if (done.value !== 'skip') {
+      await api('completions?id=eq.' + done.id, { method: 'PATCH', body: JSON.stringify({ value: 'skip' }) });
+      done.value = 'skip';
+      toast('Marked as skipped (tap again to clear)');
+    } else {
+      await api('completions?id=eq.' + done.id, { method: 'DELETE' });
+      comps = comps.filter(x => x.id !== done.id);
     }
     render();
   } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+
+// --- Notes ---
+function renderNotes() {
+  document.getElementById('notesList').innerHTML = notes.map(n =>
+    '<div class="note-item">' + esc(n.content) +
+    '<div class="note-meta"><span>' +
+    new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    '</span><span class="note-actions">' +
+    '<button onclick="shareNote(\'' + n.id + '\')">Share</button>' +
+    '<button onclick="copyNote(\'' + n.id + '\')">Copy</button>' +
+    '<button style="color:var(--red)" onclick="delNote(\'' + n.id + '\')">Delete</button>' +
+    '</span></div></div>').join('') ||
+    '<p class="muted" style="margin-top:16px;text-align:center">No notes yet.</p>';
+}
+async function addNote() {
+  const c = document.getElementById('noteBox').value.trim();
+  if (!c) return;
+  try {
+    const rows = await api('notes', { method: 'POST', body: JSON.stringify({ content: c }) });
+    notes.unshift(rows[0]);
+    document.getElementById('noteBox').value = '';
+    renderNotes(); toast('Saved');
+  } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+const noteById = id => notes.find(n => n.id === id);
+async function shareNote(id) {
+  if (navigator.share) { try { await navigator.share({ text: noteById(id).content }); } catch (e) {} }
+  else copyNote(id);
+}
+async function copyNote(id) {
+  try { await navigator.clipboard.writeText(noteById(id).content); toast('Copied'); }
+  catch (e) { toast('Copy failed'); }
+}
+async function delNote(id) {
+  if (!confirm('Delete note?')) return;
+  try {
+    await api('notes?id=eq.' + id, { method: 'DELETE' });
+    notes = notes.filter(n => n.id !== id); renderNotes();
+  } catch (e) { toast('Delete failed'); }
+}
+
+// --- Lists ---
+function renderLists() {
+  const names = [...new Set([...items.map(i => i.list_name), curList])];
+  document.getElementById('listChips').innerHTML =
+    names.map(n => '<button class="' + (n === curList ? 'active' : '') + '" onclick="pickList(this.textContent)">' + esc(n) + '</button>').join('') +
+    '<button onclick="newList()">+ New list</button>';
+  const arr = items.filter(i => i.list_name === curList);
+  document.getElementById('itemsList').innerHTML = arr.map(i =>
+    '<div class="task' + (i.done ? ' done' : '') + '">' +
+    '<button class="check" onclick="toggleItem(\'' + i.id + '\')">&#10003;</button>' +
+    '<span class="title">' + esc(i.content) + '</span>' +
+    '<button class="item-del" onclick="delItem(\'' + i.id + '\')">&#10005;</button></div>').join('') ||
+    '<p class="muted" style="padding:10px 0">Empty — add something above.</p>';
+}
+function pickList(n) { curList = n; LS.setItem('curList', n); renderLists(); }
+function newList() {
+  const n = prompt('Name the new list:');
+  if (n && n.trim()) { curList = n.trim(); LS.setItem('curList', curList); renderLists(); }
+}
+async function addItem() {
+  const v = document.getElementById('itemBox').value.trim();
+  if (!v) return;
+  try {
+    const rows = await api('list_items', { method: 'POST', body: JSON.stringify({ list_name: curList, content: v }) });
+    items.push(rows[0]);
+    document.getElementById('itemBox').value = '';
+    renderLists();
+  } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+async function toggleItem(id) {
+  const it = items.find(i => i.id === id);
+  try {
+    await api('list_items?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ done: !it.done }) });
+    it.done = !it.done; renderLists();
+  } catch (e) { toast('Save failed'); }
+}
+async function delItem(id) {
+  try {
+    await api('list_items?id=eq.' + id, { method: 'DELETE' });
+    items = items.filter(i => i.id !== id); renderLists();
+  } catch (e) { toast('Delete failed'); }
 }
 
 async function checkinAnswer(id, val) {
