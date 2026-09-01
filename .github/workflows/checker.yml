@@ -22,5 +22,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          TZ_NAME: "America/Los_Angeles"   # <-- change if you're not in US Central time
+          MYDAY_EMAIL: ${{ secrets.MYDAY_EMAIL }}
+          MYDAY_PASSWORD: ${{ secrets.MYDAY_PASSWORD }}
+          TZ_NAME: "America/Los_Angeles"
+          BRIEFING_TIME: "07:00"  # morning briefing push
+          SUMMARY_TIME: "20:30"   # end-of-day wrap-up push
+          WEEKLY_TIME: "19:00"    # Sunday weekly review push
         run: python checker.py
