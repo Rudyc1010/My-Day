@@ -10,6 +10,7 @@ Understands recurrence: daily, weekly, biweekly, monthly, once.
 import os
 import calendar
 import urllib.request
+import urllib.error
 import json
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
@@ -17,6 +18,8 @@ from zoneinfo import ZoneInfo
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 NTFY_TOPIC = os.environ["NTFY_TOPIC"]
+MYDAY_EMAIL = os.environ["MYDAY_EMAIL"]
+MYDAY_PASSWORD = os.environ["MYDAY_PASSWORD"]
 TZ = ZoneInfo(os.environ.get("TZ_NAME", "America/Chicago"))
 
 NAG_WINDOW_MIN = 35  # matches the 30-minute schedule, with a little slack
@@ -31,10 +34,42 @@ def fmt12(t):
     return f"{(h % 12) or 12}:{m:02d} {ap}"
 
 
+_TOKEN = None
+
+
+def token():
+    """Sign in once per run and reuse the access token.
+
+    Row Level Security is on, so the anon key alone can no longer read
+    anything. Signing in as you gives this script exactly your access --
+    and nothing more. (The service_role key would also work here, but it
+    bypasses RLS entirely and would be far too much power for a nag bot.)
+    """
+    global _TOKEN
+    if _TOKEN is None:
+        body = json.dumps({"email": MYDAY_EMAIL, "password": MYDAY_PASSWORD}).encode()
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
+            data=body,
+            headers={"apikey": SUPABASE_KEY, "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req) as r:
+                _TOKEN = json.loads(r.read())["access_token"]
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")
+            raise SystemExit(
+                f"Could not sign in to Supabase (HTTP {e.code}). Check the "
+                f"MYDAY_EMAIL and MYDAY_PASSWORD repository secrets.\n{detail}"
+            )
+    return _TOKEN
+
+
 def sb_get(path):
     req = urllib.request.Request(
         f"{SUPABASE_URL}/rest/v1/{path}",
-        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {token()}"},
     )
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read())
