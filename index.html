@@ -101,6 +101,11 @@
   .addrow > button { background: var(--accent); color: white; border: none; border-radius: 10px;
                      padding: 0 18px; font-size: 22px; cursor: pointer; }
   .item-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+  #loginNote { text-align: left; }
+  #loginNote input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
+                     background: var(--card2); color: var(--text); font-size: 16px; margin-bottom: 10px; }
+  #loginNote .signin { width: 100%; margin-top: 4px; padding: 13px; border: none; border-radius: 12px;
+                       background: var(--accent); color: white; font-size: 16px; font-weight: 600; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -114,6 +119,15 @@
 
 <div id="setupNote" class="setup-note" style="display:none">
   <strong>Welcome!</strong><br><span class="muted">Tap the gear icon above and paste in your Supabase URL and key to get started.</span>
+</div>
+
+<div id="loginNote" class="setup-note" style="display:none">
+  <strong>Sign in to My Day</strong>
+  <div class="muted" style="margin:6px 0 16px">Your tasks and notes are private to your account.</div>
+  <input id="logEmail" type="email" inputmode="email" autocomplete="username"
+         autocapitalize="none" autocorrect="off" placeholder="you@example.com">
+  <input id="logPass" type="password" autocomplete="current-password" placeholder="Password">
+  <button class="signin" onclick="signIn()">Sign in</button>
 </div>
 
 <div id="app" style="display:none">
@@ -213,11 +227,13 @@
       <button class="btn-ghost" onclick="testPush()">Test push</button>
       <button class="btn-primary" onclick="saveSettings()">Save</button>
     </div>
+    <button class="btn-danger" onclick="signOut()">Sign out</button>
     <h3 style="margin-top:26px">Manage tasks</h3>
     <div id="manageList" class="muted">Loading…</div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const LS = localStorage;
 const cfg = () => ({
@@ -236,14 +252,48 @@ const fmtTime = t => {
 };
 
 let tasks = [], comps = [], notes = [], items = [];
+let authed = false;
+
+// --- auth -------------------------------------------------------------
+let sb = null;
+function client() {
+  const c = cfg();
+  if (!sb && c.url && c.key) sb = supabase.createClient(c.url, c.key);
+  return sb;
+}
+
+async function session() {
+  const cl = client();
+  if (!cl) return null;
+  const { data } = await cl.auth.getSession();
+  return data.session || null;
+}
+
+async function signIn() {
+  const email = document.getElementById('logEmail').value.trim();
+  const password = document.getElementById('logPass').value;
+  if (!email || !password) { toast('Enter your email and password.'); return; }
+  const { error } = await client().auth.signInWithPassword({ email, password });
+  if (error) { toast('Sign-in failed \u2014 ' + error.message); return; }
+  document.getElementById('logPass').value = '';
+  load();
+}
+
+async function signOut() {
+  if (client()) await client().auth.signOut();
+  closeModal('settingsModal');
+  authed = false;
+  load();
+}
+// ----------------------------------------------------------------------
+
 let curTab = 'today', curList = LS.getItem('curList') || 'Groceries';
 
 function switchTab(t) {
   curTab = t;
-  const c = cfg();
-  document.getElementById('app').style.display = (t === 'today' && c.url) ? 'block' : 'none';
-  document.getElementById('notesTab').style.display = t === 'notes' ? 'block' : 'none';
-  document.getElementById('listsTab').style.display = t === 'lists' ? 'block' : 'none';
+  document.getElementById('app').style.display = (t === 'today' && authed) ? 'block' : 'none';
+  document.getElementById('notesTab').style.display = (t === 'notes' && authed) ? 'block' : 'none';
+  document.getElementById('listsTab').style.display = (t === 'lists' && authed) ? 'block' : 'none';
   ['today', 'notes', 'lists'].forEach(x =>
     document.getElementById('tab-' + x).classList.toggle('active', x === t));
   document.getElementById('fab').style.display = t === 'today' ? 'block' : 'none';
@@ -251,10 +301,12 @@ function switchTab(t) {
 
 async function api(path, opts = {}) {
   const c = cfg();
+  const ses = await session();
+  if (!ses) { authed = false; load(); throw new Error('Signed out'); }
   const r = await fetch(c.url + '/rest/v1/' + path, {
     ...opts,
     headers: {
-      'apikey': c.key, 'Authorization': 'Bearer ' + c.key,
+      'apikey': c.key, 'Authorization': 'Bearer ' + ses.access_token,
       'Content-Type': 'application/json', 'Prefer': 'return=representation',
       ...(opts.headers || {})
     }
@@ -273,9 +325,21 @@ async function load() {
 
   if (!c.url || !c.key) {
     document.getElementById('setupNote').style.display = 'block';
+    document.getElementById('loginNote').style.display = 'none';
     return;
   }
   document.getElementById('setupNote').style.display = 'none';
+
+  if (!(await session())) {
+    authed = false;
+    document.getElementById('loginNote').style.display = 'block';
+    ['app', 'notesTab', 'listsTab'].forEach(x => document.getElementById(x).style.display = 'none');
+    document.getElementById('fab').style.display = 'none';
+    return;
+  }
+  authed = true;
+  document.getElementById('loginNote').style.display = 'none';
+  document.getElementById('fab').style.display = curTab === 'today' ? 'block' : 'none';
   if (curTab === 'today') document.getElementById('app').style.display = 'block';
 
   try {
@@ -555,6 +619,7 @@ function saveSettings() {
   LS.setItem('sb_url', document.getElementById('setUrl').value.trim().replace(/\/$/, ''));
   LS.setItem('sb_key', document.getElementById('setKey').value.trim());
   LS.setItem('ntfy', document.getElementById('setNtfy').value.trim());
+  sb = null;  // url/key may have changed - rebuild the client
   closeModal('settingsModal'); load();
 }
 async function delTask(id) {
