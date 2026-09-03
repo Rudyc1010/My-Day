@@ -13,8 +13,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Check for overdue tasks
@@ -28,4 +28,5 @@ jobs:
           BRIEFING_TIME: "07:00"  # morning briefing push
           SUMMARY_TIME: "20:30"   # end-of-day wrap-up push
           WEEKLY_TIME: "19:00"    # Sunday weekly review push
+          PUSH_DETAIL: "minimal"  # "minimal" hides task names in pushes; "full" shows them
         run: python checker.py
