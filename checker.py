@@ -27,6 +27,12 @@ BRIEFING_TIME = os.environ.get("BRIEFING_TIME", "07:00") # morning briefing push
 SUMMARY_TIME = os.environ.get("SUMMARY_TIME", "20:30")   # end-of-day wrap-up push
 WEEKLY_TIME = os.environ.get("WEEKLY_TIME", "19:00")     # Sunday weekly review push
 
+# ntfy topics are public -- anyone who learns the topic name receives every push.
+# "minimal" (the default) sends counts and times but never task titles, so an
+# eavesdropper learns nothing personal. Set PUSH_DETAIL=full in checker.yml to
+# put the task names back in the notifications.
+DETAILED = os.environ.get("PUSH_DETAIL", "minimal").strip().lower() == "full"
+
 
 def fmt12(t):
     h, m = int(t[:2]), int(t[3:5])
@@ -136,15 +142,28 @@ def main():
         h, m = int(t["nag_time"][:2]), int(t["nag_time"][3:5])
         deadline = now.replace(hour=h, minute=m, second=0, microsecond=0)
         if deadline <= now < deadline + timedelta(minutes=NAG_WINDOW_MIN):
-            push(f"Heads up: “{t['title']}” isn't done yet (deadline was {t['nag_time'][:5]}).")
+            if DETAILED:
+                push(f"Heads up: “{t['title']}” isn't done yet "
+                     f"(deadline was {fmt12(t['nag_time'])}).")
+            else:
+                push(f"An item was due at {fmt12(t['nag_time'])} and isn't done yet. "
+                     f"Open My Day.")
             nagged += 1
 
     # --- morning briefing ---
     if due and in_window(now, BRIEFING_TIME):
         timed = sorted([t for t in due if t.get("time_of_day")], key=lambda t: t["time_of_day"])
-        untimed = [t for t in due if not t.get("time_of_day")]
-        parts = [f"{t['title']} at {fmt12(t['time_of_day'])}" for t in timed] + [t["title"] for t in untimed]
-        push(f"Today ({len(due)}): " + "; ".join(parts), title="My Day - morning briefing", tags="sunrise")
+        if DETAILED:
+            untimed = [t for t in due if not t.get("time_of_day")]
+            parts = ([f"{t['title']} at {fmt12(t['time_of_day'])}" for t in timed]
+                     + [t["title"] for t in untimed])
+            msg = f"Today ({len(due)}): " + "; ".join(parts)
+        else:
+            msg = f"{len(due)} item(s) on today's list"
+            if timed:
+                msg += f", first at {fmt12(timed[0]['time_of_day'])}"
+            msg += ". Open My Day for the details."
+        push(msg, title="My Day - morning briefing", tags="sunrise")
 
     # --- end-of-day summary (with skip tracking) ---
     if due and in_window(now, SUMMARY_TIME):
@@ -152,10 +171,16 @@ def main():
         skipped = [t["title"] for t in due if by_id.get(t["id"]) and by_id[t["id"]].get("value") == "skip"]
         open_ = [t["title"] for t in due if t["id"] not in done_ids]
         msg = f"Day wrap-up: {len(done)}/{len(due)} done."
-        if skipped:
-            msg += "\nSkipped: " + ", ".join(skipped)
-        if open_:
-            msg += "\nStill open: " + ", ".join(open_)
+        if DETAILED:
+            if skipped:
+                msg += "\nSkipped: " + ", ".join(skipped)
+            if open_:
+                msg += "\nStill open: " + ", ".join(open_)
+        else:
+            if skipped:
+                msg += f" {len(skipped)} skipped."
+            if open_:
+                msg += f" {len(open_)} still open."
         push(msg, title="My Day - evening summary", tags="crescent_moon")
 
     # --- Sunday weekly review ---
@@ -163,6 +188,7 @@ def main():
         week = [today - timedelta(days=i) for i in range(6, -1, -1)]
         comps_week = sb_get(f"completions?day=gte.{week[0].isoformat()}")
         lines = []
+        tot_done = tot_due = tot_skip = 0
         for t in tasks:
             rec = t.get("recurrence") or "daily"
             if t.get("kind") == "checkin" or rec == "once":
@@ -173,13 +199,28 @@ def main():
             cs = [c for c in comps_week if c["task_id"] == t["id"]]
             dn = sum(1 for c in cs if c.get("value") != "skip")
             sk = sum(1 for c in cs if c.get("value") == "skip")
+            tot_done += dn
+            tot_due += len(due_days)
+            tot_skip += sk
             lines.append(f"{t['title']}: {dn}/{len(due_days)}" + (f" ({sk} skipped)" if sk else ""))
+        screen_line = None
         ci = next((t for t in tasks if t.get("kind") == "checkin"), None)
         if ci:
             yes = sum(1 for c in comps_week if c["task_id"] == ci["id"] and c.get("value") == "yes")
-            lines.append(f"Screen-time: under limit {yes}/7 days")
-        if lines:
-            push("Weekly review:\n" + "\n".join(lines[:14]), title="My Day - weekly review", tags="bar_chart")
+            # a bare count, so this one is safe to send either way
+            screen_line = f"Screen-time: under limit {yes}/7 days"
+        if lines or screen_line:
+            if DETAILED:
+                body = "Weekly review:\n" + "\n".join(
+                    (lines + ([screen_line] if screen_line else []))[:14])
+            else:
+                body = f"Weekly review: {tot_done}/{tot_due} completed"
+                if tot_skip:
+                    body += f", {tot_skip} skipped"
+                body += "."
+                if screen_line:
+                    body += "\n" + screen_line
+            push(body, title="My Day - weekly review", tags="bar_chart")
 
     print(f"{now.isoformat()} - {len(due)} task(s) due today, sent {nagged} nag(s)")
 
