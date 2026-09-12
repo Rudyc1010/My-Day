@@ -8,104 +8,185 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Day">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
   :root {
-    --bg: #0f1220; --card: #1a1f33; --card2: #232a45; --text: #eef0f8;
-    --muted: #8b92ad; --accent: #5b8cff; --green: #3ecf8e; --red: #ff6b6b;
-    --amber: #ffb347; --radius: 16px;
+    --bg:#0D131A; --card:#151E27; --card2:#1C2733; --card3:#232F3C;
+    --line:#26333F; --line2:#324150;
+    --text:#E7EDF3; --muted:#9DABB8; --faint:#6F7E8C;
+    --accent:#59B7D6; --accent-soft:#123240;
+    --green:#78C7A2; --amber:#E0B15E; --red:#E8897B;
+    --training:#C79AD1; --training-bg:#2C1B31;
+    --health:#78C7A2;   --health-bg:#123024;
+    --learning:#59B7D6; --learning-bg:#123240;
+    --home:#E0B15E;     --home-bg:#33280F;
+    --family:#E89BB0;   --family-bg:#331A22;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --radius:14px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body {
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 90px) 16px;
-    max-width: 560px; margin: 0 auto;
+    background:var(--bg); color:var(--text);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) 14px calc(env(safe-area-inset-bottom) + 92px) 14px;
+    max-width:620px; margin:0 auto;
   }
-  header { padding: 22px 4px 6px; display: flex; justify-content: space-between; align-items: flex-start; }
-  header h1 { font-size: 26px; font-weight: 700; }
-  header .date { color: var(--muted); font-size: 14px; margin-top: 3px; }
-  .gear { background: var(--card); border: none; color: var(--muted); font-size: 20px;
-          width: 42px; height: 42px; border-radius: 12px; cursor: pointer; }
-  .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-top: 14px; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
-  .now-card { background: linear-gradient(135deg, #2a3b7a, #1c2547); }
-  .now-line { font-size: 18px; font-weight: 600; margin: 4px 0; }
-  .next-line { color: var(--muted); font-size: 14px; margin-top: 6px; }
-  .task { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .task:last-child { border-bottom: none; }
-  .task .time { color: var(--accent); font-size: 13px; font-weight: 600; min-width: 62px; }
-  .task .title { flex: 1; font-size: 16px; }
-  .task.done .title { text-decoration: line-through; color: var(--muted); }
-  .task .streak { font-size: 13px; color: var(--amber); min-width: 44px; text-align: right; }
-  .check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--muted);
-           background: none; cursor: pointer; flex-shrink: 0; font-size: 15px; color: transparent; }
-  .task.done .check { background: var(--green); border-color: var(--green); color: #08331f; }
-  .nag-badge { font-size: 11px; color: var(--red); }
-  .checkin-btns { display: flex; gap: 10px; margin-top: 10px; }
-  .checkin-btns button { flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 15px;
-                         font-weight: 600; cursor: pointer; }
-  .btn-yes { background: var(--green); color: #08331f; }
-  .btn-no { background: var(--card2); color: var(--text); }
-  .checkin-result { margin-top: 10px; font-size: 15px; }
-  .fab { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 78px); right: 20px;
-         width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white;
-         font-size: 30px; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none;
-              align-items: flex-end; justify-content: center; z-index: 10; }
-  .modal-bg.open { display: flex; }
-  .modal { background: var(--card); width: 100%; max-width: 560px; border-radius: 20px 20px 0 0;
-           padding: 22px 18px calc(env(safe-area-inset-bottom) + 22px); max-height: 85vh; overflow-y: auto; }
-  .modal h3 { margin-bottom: 14px; }
-  .modal label { display: block; color: var(--muted); font-size: 13px; margin: 12px 0 5px; }
-  .modal input, .modal select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
-                                background: var(--card2); color: var(--text); font-size: 16px; }
-  .modal .row-btns { display: flex; gap: 10px; margin-top: 20px; }
-  .modal .row-btns button { flex: 1; padding: 13px; border-radius: 12px; border: none; font-size: 16px;
-                            font-weight: 600; cursor: pointer; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-ghost { background: var(--card2); color: var(--text); }
-  .btn-danger { background: none; border: none; color: var(--red); font-size: 14px; margin-top: 14px;
-                cursor: pointer; width: 100%; text-align: center; }
-  .manage-item { display: flex; align-items: center; justify-content: space-between;
-                 padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 15px; }
-  .manage-item .del { background: none; border: none; color: var(--red); font-size: 18px; cursor: pointer; }
-  .muted { color: var(--muted); font-size: 14px; }
-  .setup-note { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 20px;
-                text-align: center; line-height: 1.5; }
-  .toast { position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%);
-           background: var(--card2); padding: 10px 18px; border-radius: 20px; font-size: 14px;
-           display: none; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(15,18,32,0.97);
-            border-top: 1px solid rgba(255,255,255,0.08); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
-  .tabbar button { flex: 1; background: none; border: none; color: var(--muted); font-size: 14px;
-                   padding: 14px 0 12px; cursor: pointer; }
-  .tabbar button.active { color: var(--accent); font-weight: 600; }
-  .task.skipped .title { color: var(--amber); }
-  .task.skipped .check { background: var(--amber); border-color: var(--amber); color: #3d2c00; }
-  .note-item { background: var(--card); border-radius: 12px; padding: 14px; margin-top: 10px;
-               font-size: 15px; white-space: pre-wrap; }
-  .note-meta { display: flex; justify-content: space-between; margin-top: 10px; color: var(--muted); font-size: 12px; }
-  .note-actions button { background: none; border: none; color: var(--accent); font-size: 13px;
-                         margin-left: 16px; cursor: pointer; }
-  .composer { width: 100%; min-height: 72px; padding: 12px; border-radius: 12px; border: 1px solid #333c5e;
-              background: var(--card2); color: var(--text); font-size: 16px; font-family: inherit; resize: vertical; }
-  .save-note { width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 12px;
-               background: var(--accent); color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
-  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0 2px; }
-  .chips button { background: var(--card); border: none; color: var(--text); padding: 9px 15px;
-                  border-radius: 18px; font-size: 14px; white-space: nowrap; cursor: pointer; }
-  .chips button.active { background: var(--accent); color: white; }
-  .addrow { display: flex; gap: 8px; }
-  .addrow input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
-                  background: var(--card2); color: var(--text); font-size: 16px; }
-  .addrow > button { background: var(--accent); color: white; border: none; border-radius: 10px;
-                     padding: 0 18px; font-size: 22px; cursor: pointer; }
-  .item-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
-  #loginNote { text-align: left; }
-  #loginNote input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333c5e;
-                     background: var(--card2); color: var(--text); font-size: 16px; margin-bottom: 10px; }
-  #loginNote .signin { width: 100%; margin-top: 4px; padding: 13px; border: none; border-radius: 12px;
-                       background: var(--accent); color: white; font-size: 16px; font-weight: 600; cursor: pointer; }
+  header { padding:22px 4px 6px; display:flex; justify-content:space-between; align-items:flex-start; }
+  header h1 { font-family:"Archivo",sans-serif; font-weight:800; font-size:27px; letter-spacing:-.02em; }
+  header .date { color:var(--muted); font-size:13.5px; margin-top:3px; }
+  .gear { background:var(--card); border:1px solid var(--line); color:var(--muted); font-size:19px;
+          width:42px; height:42px; border-radius:12px; cursor:pointer; flex:none; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+          padding:14px 15px; margin-top:13px; box-shadow:var(--shadow); }
+  .card h2 { font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase;
+             letter-spacing:.14em; color:var(--faint); font-weight:600; margin-bottom:9px; }
+  .now-card { background:linear-gradient(180deg,var(--card),var(--card2));
+              border-left:4px solid var(--accent); }
+  .now-line { font-family:"Archivo",sans-serif; font-weight:700; font-size:17px; letter-spacing:-.01em; margin:3px 0; }
+  .next-line { color:var(--muted); font-size:13.5px; margin-top:5px; }
+
+  /* ---- task block rows (Today) ---- */
+  .b { display:grid; grid-template-columns:28px 72px 1fr auto; gap:10px; align-items:start;
+       padding:9px 4px; border-radius:9px; }
+  .b + .b { border-top:1px solid var(--line); }
+  .b .t { font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--muted);
+          font-variant-numeric:tabular-nums; padding-top:4px; line-height:1.3; }
+  .b .d { font-size:15px; line-height:1.35; padding-top:1px; }
+  .b.done .d, .b.done .t { color:var(--faint); }
+  .b.done .d .ttl { text-decoration:line-through; }
+  .b.skipped .d .ttl { color:var(--amber); }
+  .check { width:26px; height:26px; border-radius:50%; border:2px solid var(--line2);
+           background:none; cursor:pointer; font-size:14px; color:transparent; flex:none; margin-top:1px; }
+  .b.done .check { background:var(--green); border-color:var(--green); color:#08331f; }
+  .b.skipped .check { background:var(--amber); border-color:var(--amber); color:#3d2c00; }
+  .streak { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--amber);
+            padding-top:4px; white-space:nowrap; }
+  .nag-badge { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--red); margin-left:5px; }
+  .recl { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); margin-left:5px; }
+
+  /* ---- area chips ---- */
+  .lab { font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.07em;
+         padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:1.5px; display:inline-block; }
+  .lab.training { background:var(--training-bg); color:var(--training); }
+  .lab.health   { background:var(--health-bg);   color:var(--health); }
+  .lab.learning { background:var(--learning-bg); color:var(--learning); }
+  .lab.home     { background:var(--home-bg);     color:var(--home); }
+  .lab.family   { background:var(--family-bg);   color:var(--family); }
+
+  /* ---- week tab ---- */
+  .weekhead { display:flex; justify-content:space-between; align-items:baseline; padding:18px 4px 2px; }
+  .weekhead h2 { font-family:"Archivo",sans-serif; font-weight:700; font-size:19px; letter-spacing:-.01em; }
+  .weekhead .sub { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--faint);
+                   letter-spacing:.06em; text-transform:uppercase; }
+  .legend { display:flex; gap:8px; flex-wrap:wrap; padding:12px 4px 2px; }
+  .week { display:grid; gap:12px; margin-top:12px; }
+  .day { background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+         box-shadow:var(--shadow); overflow:hidden; }
+  .day.is-today { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow); }
+  .day-h { padding:11px 14px 9px; border-bottom:1px solid var(--line);
+           display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .day-h .dname { font-family:"Archivo",sans-serif; font-weight:700; font-size:16px; }
+  .day-h .dname .todaytag { font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600;
+           letter-spacing:.08em; color:var(--accent); background:var(--accent-soft);
+           padding:2px 6px; border-radius:4px; margin-left:8px; vertical-align:2px; }
+  .day-h .ddate { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--faint);
+                  letter-spacing:.04em; text-transform:uppercase; }
+  .day .blocks { padding:6px 10px 8px; }
+  .wb { display:grid; grid-template-columns:72px 1fr; gap:10px; align-items:start;
+        padding:8px 4px; border-radius:8px; cursor:pointer; }
+  .wb + .wb { border-top:1px solid var(--line); }
+  .wb:active { background:var(--card2); }
+  .wb .t { font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--muted);
+           font-variant-numeric:tabular-nums; padding-top:3px; line-height:1.3; }
+  .wb .d { font-size:14.5px; line-height:1.35; }
+  .day .empty { padding:12px 4px; color:var(--faint); font-size:13.5px; }
+  .addday { width:100%; background:none; border:none; border-top:1px solid var(--line);
+            color:var(--accent); font-family:"IBM Plex Sans",sans-serif; font-size:13.5px;
+            font-weight:500; padding:11px 0; cursor:pointer; }
+  .addday:active { background:var(--card2); }
+
+  /* ---- check-in ---- */
+  .checkin-btns { display:flex; gap:10px; margin-top:10px; }
+  .checkin-btns button { flex:1; padding:12px; border-radius:11px; border:none; font-size:15px;
+                         font-weight:600; font-family:inherit; cursor:pointer; }
+  .btn-yes { background:var(--green); color:#08331f; }
+  .btn-no { background:var(--card3); color:var(--text); }
+  .checkin-result { margin-top:10px; font-size:15px; }
+
+  /* ---- chrome ---- */
+  .fab { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 78px); right:18px;
+         width:54px; height:54px; border-radius:50%; background:var(--accent); color:#08222c;
+         font-size:29px; font-weight:600; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.5); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none;
+              align-items:flex-end; justify-content:center; z-index:10; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--card); width:100%; max-width:620px; border-radius:20px 20px 0 0;
+           padding:22px 18px calc(env(safe-area-inset-bottom) + 22px); max-height:88vh; overflow-y:auto; }
+  .modal h3 { font-family:"Archivo",sans-serif; font-weight:700; font-size:19px; margin-bottom:12px; }
+  .modal label { display:block; color:var(--muted); font-size:12.5px; margin:12px 0 5px; }
+  .modal input, .modal select { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line2);
+                                background:var(--card2); color:var(--text); font-size:16px; font-family:inherit; }
+  .modal .two { display:flex; gap:10px; }
+  .modal .two > div { flex:1; }
+  .modal .row-btns { display:flex; gap:10px; margin-top:20px; }
+  .modal .row-btns button { flex:1; padding:13px; border-radius:11px; border:none; font-size:16px;
+                            font-weight:600; font-family:inherit; cursor:pointer; }
+  .btn-primary { background:var(--accent); color:#08222c; }
+  .btn-ghost { background:var(--card3); color:var(--text); }
+  .btn-danger { background:none; border:none; color:var(--red); font-size:14px; margin-top:14px;
+                cursor:pointer; width:100%; text-align:center; font-family:inherit; }
+  .manage-item { display:flex; align-items:center; justify-content:space-between;
+                 padding:10px 0; border-bottom:1px solid var(--line); font-size:15px; }
+  .manage-item .del { background:none; border:none; color:var(--red); font-size:17px; cursor:pointer; }
+  .muted { color:var(--muted); font-size:14px; }
+  .setup-note { background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+                padding:20px; margin-top:20px; text-align:center; line-height:1.5; }
+  #loginNote { text-align:left; }
+  #loginNote input { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line2);
+                     background:var(--card2); color:var(--text); font-size:16px; margin-bottom:10px; font-family:inherit; }
+  #loginNote .signin { width:100%; margin-top:4px; padding:13px; border:none; border-radius:11px;
+                       background:var(--accent); color:#08222c; font-size:16px; font-weight:600;
+                       cursor:pointer; font-family:inherit; }
+  .toast { position:fixed; top:calc(env(safe-area-inset-top) + 12px); left:50%; transform:translateX(-50%);
+           background:var(--card3); border:1px solid var(--line2); padding:10px 18px; border-radius:20px;
+           font-size:14px; display:none; z-index:20; box-shadow:0 4px 12px rgba(0,0,0,.55); max-width:92vw; }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; display:flex; background:rgba(13,19,26,.97);
+            border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+  .tabbar button { flex:1; background:none; border:none; color:var(--muted); font-size:13px;
+                   font-family:inherit; padding:14px 0 12px; cursor:pointer; }
+  .tabbar button.active { color:var(--accent); font-weight:600; }
+
+  /* ---- notes + lists ---- */
+  .note-item { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px;
+               margin-top:10px; font-size:15px; white-space:pre-wrap; }
+  .note-meta { display:flex; justify-content:space-between; margin-top:10px; color:var(--faint); font-size:11.5px;
+               font-family:"IBM Plex Mono",monospace; }
+  .note-actions button { background:none; border:none; color:var(--accent); font-size:13px;
+                         margin-left:16px; cursor:pointer; font-family:inherit; }
+  .composer { width:100%; min-height:72px; padding:12px; border-radius:12px; border:1px solid var(--line2);
+              background:var(--card2); color:var(--text); font-size:16px; font-family:inherit; resize:vertical; }
+  .save-note { width:100%; margin-top:10px; padding:12px; border:none; border-radius:11px;
+               background:var(--accent); color:#08222c; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:14px 0 2px; }
+  .chips button { background:var(--card); border:1px solid var(--line); color:var(--text); padding:9px 15px;
+                  border-radius:18px; font-size:14px; white-space:nowrap; cursor:pointer; font-family:inherit; }
+  .chips button.active { background:var(--accent); color:#08222c; border-color:var(--accent); font-weight:600; }
+  .addrow { display:flex; gap:8px; }
+  .addrow input { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line2);
+                  background:var(--card2); color:var(--text); font-size:16px; font-family:inherit; }
+  .addrow > button { background:var(--accent); color:#08222c; border:none; border-radius:10px;
+                     padding:0 18px; font-size:22px; cursor:pointer; }
+  .item-del { background:none; border:none; color:var(--faint); font-size:16px; cursor:pointer; }
+  .task { display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line); }
+  .task:last-child { border-bottom:none; }
+  .task .title { flex:1; font-size:15px; }
+  .task.done .title { text-decoration:line-through; color:var(--faint); }
+  .task .time { font-family:"IBM Plex Mono",monospace; color:var(--accent); font-size:12px; min-width:58px; }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
 </style>
 </head>
 <body>
@@ -175,8 +256,18 @@
   </div>
 </div>
 
+<div id="weekTab" style="display:none">
+  <div class="weekhead">
+    <h2>Your week</h2>
+    <span class="sub" id="weekRange"></span>
+  </div>
+  <div class="legend" id="weekLegend"></div>
+  <div class="week" id="weekGrid"></div>
+</div>
+
 <nav class="tabbar">
   <button id="tab-today" class="active" onclick="switchTab('today')">Today</button>
+  <button id="tab-week" onclick="switchTab('week')">Week</button>
   <button id="tab-notes" onclick="switchTab('notes')">Notes</button>
   <button id="tab-lists" onclick="switchTab('lists')">Lists</button>
 </nav>
@@ -187,7 +278,7 @@
 <!-- Add task modal -->
 <div class="modal-bg" id="addModal">
   <div class="modal">
-    <h3>New task</h3>
+    <h3 id="addModalTitle">New task</h3>
     <label>What is it?</label>
     <input id="addTitle" placeholder="e.g. Gym, Take medication, Call Mom">
     <label>Repeats</label>
@@ -200,14 +291,32 @@
     </select>
     <label>Date (the first — or only — day it happens)</label>
     <input id="addDate" type="date">
-    <label>Time of day (optional — when it shows on the schedule)</label>
-    <input id="addTime" type="time">
+    <div class="two">
+      <div>
+        <label>Starts (optional)</label>
+        <input id="addTime" type="time">
+      </div>
+      <div>
+        <label>Ends (optional)</label>
+        <input id="addEnd" type="time">
+      </div>
+    </div>
+    <label>Area (colours the chip on the card)</label>
+    <select id="addArea">
+      <option value="">None</option>
+      <option value="training">Training</option>
+      <option value="health">Health</option>
+      <option value="learning">Learning</option>
+      <option value="home">Home</option>
+      <option value="family">Family</option>
+    </select>
     <label>Nag me if not done by (optional — sends a push)</label>
     <input id="addNag" type="time">
     <div class="row-btns">
       <button class="btn-ghost" onclick="closeModal('addModal')">Cancel</button>
       <button class="btn-primary" onclick="saveTask()">Save</button>
     </div>
+    <button class="btn-danger" id="deleteTaskBtn" style="display:none" onclick="delEditing()">Delete this task</button>
   </div>
 </div>
 
@@ -292,11 +401,12 @@ let curTab = 'today', curList = LS.getItem('curList') || 'Groceries';
 function switchTab(t) {
   curTab = t;
   document.getElementById('app').style.display = (t === 'today' && authed) ? 'block' : 'none';
+  document.getElementById('weekTab').style.display = (t === 'week' && authed) ? 'block' : 'none';
   document.getElementById('notesTab').style.display = (t === 'notes' && authed) ? 'block' : 'none';
   document.getElementById('listsTab').style.display = (t === 'lists' && authed) ? 'block' : 'none';
-  ['today', 'notes', 'lists'].forEach(x =>
+  ['today', 'week', 'notes', 'lists'].forEach(x =>
     document.getElementById('tab-' + x).classList.toggle('active', x === t));
-  document.getElementById('fab').style.display = t === 'today' ? 'block' : 'none';
+  document.getElementById('fab').style.display = (t === 'today' || t === 'week') ? 'block' : 'none';
 }
 
 async function api(path, opts = {}) {
@@ -333,7 +443,7 @@ async function load() {
   if (!(await session())) {
     authed = false;
     document.getElementById('loginNote').style.display = 'block';
-    ['app', 'notesTab', 'listsTab'].forEach(x => document.getElementById(x).style.display = 'none');
+    ['app', 'weekTab', 'notesTab', 'listsTab'].forEach(x => document.getElementById(x).style.display = 'none');
     document.getElementById('fab').style.display = 'none';
     return;
   }
@@ -350,7 +460,7 @@ async function load() {
       api('notes?order=created_at.desc&limit=200'),
       api('list_items?order=created_at.asc')
     ]);
-    render(); renderNotes(); renderLists();
+    render(); renderWeek(); renderNotes(); renderLists();
   } catch (e) {
     toast('Could not load — check settings. ' + e.message.slice(0, 80));
   }
@@ -369,21 +479,41 @@ function streak(id) {
   return n;
 }
 
-function isDueToday(t) {
+// strictOnce: on the Week overview a one-time task appears only on its own date.
+// On Today it keeps showing until completed, which is the original nagging behaviour.
+function dueOn(t, when, strictOnce) {
   const rec = t.recurrence || 'daily';
+  const day = new Date(when); day.setHours(0, 0, 0, 0);
   if (rec === 'daily') return true;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const anchor = t.anchor_date ? new Date(t.anchor_date + 'T00:00:00') : today;
-  const diff = Math.round((today - anchor) / 864e5);
-  if (rec === 'once') return diff >= 0 && !comps.some(c => c.task_id === t.id);
+  const anchor = t.anchor_date ? new Date(t.anchor_date + 'T00:00:00') : day;
+  const diff = Math.round((day - anchor) / 864e5);
+  if (rec === 'once') {
+    if (strictOnce) return diff === 0;
+    return diff >= 0 && !comps.some(c => c.task_id === t.id);
+  }
   if (diff < 0) return false;
-  if (rec === 'weekly') return today.getDay() === anchor.getDay();
-  if (rec === 'biweekly') return today.getDay() === anchor.getDay() && Math.floor(diff / 7) % 2 === 0;
+  if (rec === 'weekly') return day.getDay() === anchor.getDay();
+  if (rec === 'biweekly') return day.getDay() === anchor.getDay() && Math.floor(diff / 7) % 2 === 0;
   if (rec === 'monthly') {
-    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    return today.getDate() === Math.min(anchor.getDate(), last);
+    const last = new Date(day.getFullYear(), day.getMonth() + 1, 0).getDate();
+    return day.getDate() === Math.min(anchor.getDate(), last);
   }
   return false;
+}
+function isDueToday(t) { return dueOn(t, new Date(), false); }
+
+const AREAS = { training:'TRAINING', health:'HEALTH', learning:'LEARNING', home:'HOME', family:'FAMILY' };
+const areaChip = a => (a && AREAS[a]) ? '<span class="lab ' + a + '">' + AREAS[a] + '</span>' : '';
+const isoOf = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+// "7:00 AM" alone, or "4:15-4:35 AM" when both ends share a meridiem
+function fmtRange(t) {
+  const a = t.time_of_day, b = t.end_time;
+  if (!a) return '';
+  if (!b) return fmtTime(a);
+  const ap = x => (+x.slice(0,2)) >= 12 ? 'PM' : 'AM';
+  const sh = x => ((+x.slice(0,2) % 12) || 12) + ':' + x.slice(3,5);
+  return ap(a) === ap(b) ? sh(a) + '\u2013' + sh(b) + ' ' + ap(b) : fmtTime(a) + '\u2013' + fmtTime(b);
 }
 
 function render() {
@@ -454,13 +584,15 @@ function renderList(cardId, listId, arr, showTime) {
     const rec = t.recurrence || 'daily';
     const s = rec === 'daily' ? streak(t.id) : 0;
     const recLabel = { weekly: 'weekly', biweekly: 'every 2 wks', monthly: 'monthly', once: 'one-time' }[rec];
-    return '<div class="task' + (skipped ? ' skipped' : done ? ' done' : '') + '">' +
+    return '<div class="b' + (skipped ? ' skipped' : done ? ' done' : '') + '">' +
       '<button class="check" onclick="toggle(\'' + t.id + '\')">' + (skipped ? '&#8211;' : '&#10003;') + '</button>' +
-      (showTime ? '<span class="time">' + (fmtTime(t.time_of_day) || '—') + '</span>' : '') +
-      '<span class="title">' + esc(t.title) +
-      (recLabel ? ' <span class="muted" style="font-size:12px">· ' + recLabel + '</span>' : '') +
-      (t.nag_time && !done ? ' <span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') + '</span>' +
-      (s > 0 ? '<span class="streak">' + s + ' &#128293;</span>' : '') +
+      '<span class="t">' + (fmtRange(t) || '\u2014') + '</span>' +
+      '<span class="d" onclick="openTask(\'' + t.id + '\')"><span class="ttl">' + esc(t.title) + '</span>' +
+        areaChip(t.area) +
+        (recLabel ? '<span class="recl">\u00b7 ' + recLabel + '</span>' : '') +
+        (t.nag_time && !done ? '<span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') +
+      '</span>' +
+      (s > 0 ? '<span class="streak">' + s + ' &#128293;</span>' : '<span></span>') +
       '</div>';
   }).join('');
 }
@@ -577,9 +709,98 @@ async function checkinAnswer(id, val) {
 }
 
 // --- Add task ---
+function renderWeek() {
+  const grid = document.getElementById('weekGrid');
+  if (!grid) return;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));   // back to Monday
+  const days = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(start); d.setDate(d.getDate() + i); days.push(d); }
+
+  const fmtD = d => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  document.getElementById('weekRange').textContent = fmtD(days[0]) + ' \u2013 ' + fmtD(days[6]);
+  document.getElementById('weekLegend').innerHTML =
+    Object.keys(AREAS).map(a => '<span class="lab ' + a + '" style="margin:0">' + AREAS[a] + '</span>').join('');
+
+  grid.innerHTML = days.map(d => {
+    const iso = isoOf(d);
+    const dayName = d.toLocaleDateString(undefined, { weekday: 'long' });
+    const list = tasks
+      .filter(t => t.kind !== 'checkin' && dueOn(t, d, true))
+      .sort((a, b) => (a.time_of_day || '~').localeCompare(b.time_of_day || '~'));
+    const rows = list.length
+      ? list.map(t => '<div class="wb" onclick="openTask(\'' + t.id + '\')">' +
+          '<span class="t">' + (fmtRange(t) || '\u2014') + '</span>' +
+          '<span class="d"><span class="ttl">' + esc(t.title) + '</span>' + areaChip(t.area) + '</span></div>').join('')
+      : '<div class="empty">Nothing planned yet.</div>';
+    return '<div class="day' + (iso === todayStr() ? ' is-today' : '') + '">' +
+      '<div class="day-h"><span class="dname">' + dayName +
+        (iso === todayStr() ? '<span class="todaytag">TODAY</span>' : '') + '</span>' +
+        '<span class="ddate">' + fmtD(d) + '</span></div>' +
+      '<div class="blocks">' + rows + '</div>' +
+      '<button class="addday" onclick="openDay(\'' + iso + '\')">+ Add to ' + dayName + '</button>' +
+      '</div>';
+  }).join('');
+}
+
+let editingId = null;
+
+function resetTaskForm() {
+  ['addTitle', 'addTime', 'addEnd', 'addNag'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('addArea').value = '';
+}
+
 function openAdd() {
+  editingId = null;
+  document.getElementById('addModalTitle').textContent = 'New task';
+  resetTaskForm();
+  document.getElementById('addRec').value = 'daily';
   document.getElementById('addDate').value = todayStr();
+  document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('addModal').classList.add('open');
+}
+
+// Adding from a day card on the Week tab: repeats weekly on that weekday,
+// so it reappears every week when the day comes round.
+function openDay(iso) {
+  editingId = null;
+  document.getElementById('addModalTitle').textContent =
+    'Add to ' + new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' });
+  resetTaskForm();
+  document.getElementById('addRec').value = 'weekly';
+  document.getElementById('addDate').value = iso;
+  document.getElementById('deleteTaskBtn').style.display = 'none';
+  document.getElementById('addModal').classList.add('open');
+}
+
+function openTask(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  document.getElementById('addModalTitle').textContent = 'Edit task';
+  document.getElementById('addTitle').value = t.title;
+  document.getElementById('addRec').value = t.recurrence || 'daily';
+  document.getElementById('addDate').value = t.anchor_date || todayStr();
+  document.getElementById('addTime').value = (t.time_of_day || '').slice(0, 5);
+  document.getElementById('addEnd').value = (t.end_time || '').slice(0, 5);
+  document.getElementById('addNag').value = (t.nag_time || '').slice(0, 5);
+  document.getElementById('addArea').value = t.area || '';
+  document.getElementById('deleteTaskBtn').style.display = 'block';
+  document.getElementById('addModal').classList.add('open');
+}
+
+async function delEditing() {
+  if (!editingId) return;
+  const t = tasks.find(x => x.id === editingId);
+  if (!confirm('Delete "' + (t ? t.title : 'this task') + '"? Its history goes too.')) return;
+  try {
+    await api('tasks?id=eq.' + editingId, { method: 'DELETE' });
+    tasks = tasks.filter(x => x.id !== editingId);
+    editingId = null;
+    closeModal('addModal');
+    render(); renderWeek(); toast('Deleted');
+  } catch (e) { toast('Delete failed: ' + e.message.slice(0, 80)); }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 async function saveTask() {
@@ -590,13 +811,24 @@ async function saveTask() {
     recurrence: document.getElementById('addRec').value,
     anchor_date: document.getElementById('addDate').value || todayStr(),
     time_of_day: document.getElementById('addTime').value || null,
-    nag_time: document.getElementById('addNag').value || null
+    end_time: document.getElementById('addEnd').value || null,
+    nag_time: document.getElementById('addNag').value || null,
+    area: document.getElementById('addArea').value || null
   };
   try {
-    const rows = await api('tasks', { method: 'POST', body: JSON.stringify(body) });
-    tasks.push(rows[0]); closeModal('addModal');
-    document.getElementById('addTitle').value = '';
-    render(); toast('Added');
+    if (editingId) {
+      const rows = await api('tasks?id=eq.' + editingId, { method: 'PATCH', body: JSON.stringify(body) });
+      const i = tasks.findIndex(x => x.id === editingId);
+      if (i >= 0 && rows && rows[0]) tasks[i] = rows[0];
+      toast('Saved');
+    } else {
+      const rows = await api('tasks', { method: 'POST', body: JSON.stringify(body) });
+      tasks.push(rows[0]); toast('Added');
+    }
+    editingId = null;
+    closeModal('addModal');
+    resetTaskForm();
+    render(); renderWeek();
   } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
 }
 
