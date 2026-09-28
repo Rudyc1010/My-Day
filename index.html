@@ -25,6 +25,9 @@
     --family:#E89BB0;   --family-bg:#331A22;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
     --radius:14px;
+    /* workout results -- same dark steps as Rudy's Week (MOVE / REST / FIXED / FLEX),
+       validated as a categorical set on --card */
+    --c-full:#d95926; --c-short:#199e70; --c-walk:#3987e5; --c-skip:#c98500; --c-none:#324150;
   }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body {
@@ -63,6 +66,10 @@
            background:none; cursor:pointer; font-size:14px; color:transparent; flex:none; margin-top:1px; }
   .b.done .check { background:var(--green); border-color:var(--green); color:#08331f; }
   .b.skipped .check { background:var(--amber); border-color:var(--amber); color:#3d2c00; }
+  .b.short .check { background:var(--c-short); border-color:var(--c-short); color:#fff; font-size:12px; font-weight:700; }
+  .res { font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.07em;
+         padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:1.5px; display:inline-block;
+         background:#10352a; color:#5fd3a6; text-decoration:none; }
   .streak { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--amber);
             padding-top:4px; white-space:nowrap; }
   .nag-badge { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--red); margin-left:5px; }
@@ -108,6 +115,70 @@
             color:var(--accent); font-family:"IBM Plex Sans",sans-serif; font-size:13.5px;
             font-weight:500; padding:11px 0; cursor:pointer; }
   .addday:active { background:var(--card2); }
+
+  .wb { grid-template-columns:72px 1fr auto; }
+  .wmark { font-size:13px; font-weight:700; padding-top:2px; min-width:14px; text-align:center; }
+  .wmark.done { color:var(--green); } .wmark.short { color:#5fd3a6; } .wmark.skip { color:var(--amber); }
+
+  /* ---- workout picker ---- */
+  .wk-sub { color:var(--muted); font-size:13.5px; margin:-6px 0 14px; }
+  .wk-btns { display:flex; flex-direction:column; gap:10px; }
+  .wk-btns button { display:flex; align-items:center; gap:13px; padding:13px 14px; border-radius:12px;
+                    border:1px solid var(--line2); background:var(--card2); color:var(--text); font-size:16px;
+                    font-weight:600; font-family:inherit; cursor:pointer; text-align:left; }
+  .wk-btns button.cur { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .wk-btns .ic { width:30px; height:30px; border-radius:50%; display:grid; place-items:center;
+                 font-size:14px; flex:none; color:#fff; }
+  .wk-btns .sub { display:block; font-weight:400; font-size:12.5px; color:var(--muted); margin-top:1px; }
+  .wk-btns .clear { justify-content:center; background:none; border-style:dashed; color:var(--muted);
+                    font-weight:500; font-size:14px; padding:10px; }
+  .wk-month { font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--faint);
+              margin-top:14px; text-align:center; letter-spacing:.02em; }
+
+  /* ---- day picker (add-task modal) ---- */
+  .daypick { display:flex; gap:5px; }
+  .daypick button { flex:1; padding:10px 0; border-radius:9px; border:1px solid var(--line2); background:var(--card2);
+                    color:var(--muted); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .daypick button.on { background:var(--accent); border-color:var(--accent); color:#08222c; }
+
+  /* ---- progress tab ---- */
+  .yearnav { display:flex; align-items:center; gap:6px; }
+  .yearnav button { background:var(--card); border:1px solid var(--line); color:var(--text); width:34px; height:34px;
+                    border-radius:10px; font-size:17px; cursor:pointer; font-family:inherit; }
+  .yearnav button:disabled { opacity:.35; cursor:default; }
+  .yearnav .yr { font-family:"Archivo",sans-serif; font-weight:700; font-size:17px; min-width:50px; text-align:center;
+                 font-variant-numeric:tabular-nums; }
+  .tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12px; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; box-shadow:var(--shadow); }
+  .tile .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); }
+  .tile .v { font-family:"Archivo",sans-serif; font-weight:700; font-size:25px; letter-spacing:-.01em;
+             font-variant-numeric:tabular-nums; line-height:1.2; margin-top:2px; }
+  .tile .v small { font-size:14px; color:var(--muted); font-weight:600; }
+  .tile .n { font-size:12.5px; color:var(--muted); }
+  .plegend { display:flex; flex-wrap:wrap; gap:6px 14px; font-family:"IBM Plex Mono",monospace; font-size:11px;
+             color:var(--muted); margin-bottom:10px; }
+  .plegend span { display:inline-flex; align-items:center; gap:6px; }
+  .sq { width:10px; height:10px; border-radius:3px; display:inline-block; flex:none; }
+  .mrow { display:grid; grid-template-columns:34px 1fr 58px; gap:10px; align-items:center; padding:9px 2px;
+          border-top:1px solid var(--line); cursor:pointer; }
+  .mrow:first-of-type { border-top:none; }
+  .mrow .m { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); }
+  .mrow .cnt { font-family:"IBM Plex Mono",monospace; font-size:12px; text-align:right; font-variant-numeric:tabular-nums; }
+  .mrow .cnt b { color:var(--text); font-weight:600; }
+  .mrow .cnt span { color:var(--faint); }
+  .mrow.future { cursor:default; }
+  .mrow.future .m, .mrow.future .cnt { color:var(--faint); }
+  .mrow.open { background:var(--card2); border-radius:9px; }
+  .mbar { display:flex; gap:2px; height:14px; }
+  .mbar i { display:block; height:100%; min-width:3px; }
+  .mbar i:first-child { border-radius:4px 0 0 4px; } .mbar i:last-child { border-radius:0 4px 4px 0; }
+  .mbar i:only-child { border-radius:4px; }
+  .mbar.empty { background:repeating-linear-gradient(90deg,var(--line) 0 2px,transparent 2px 6px); border-radius:4px; opacity:.6; }
+  .mdetail { grid-column:1/-1; font-size:13px; color:var(--muted); padding:2px 0 2px 44px; line-height:1.6; }
+  .mdetail b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+  .pfoot { color:var(--faint); font-size:12.5px; margin-top:10px; line-height:1.5; }
+  .pbtn { width:100%; margin-top:12px; padding:12px; border-radius:11px; border:1px solid var(--line2);
+          background:var(--card2); color:var(--text); font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; }
 
   /* ---- check-in ---- */
   .checkin-btns { display:flex; gap:10px; margin-top:10px; }
@@ -163,6 +234,11 @@
   /* ---- notes + lists ---- */
   .note-item { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px;
                margin-top:10px; font-size:15px; white-space:pre-wrap; }
+  .note-item.is-voice { white-space:normal; }
+  .note-text { white-space:pre-wrap; }
+  .voice { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .voice .vic { font-size:18px; flex:none; }
+  .voice audio { width:100%; height:40px; color-scheme:dark; }
   .note-meta { display:flex; justify-content:space-between; margin-top:10px; color:var(--faint); font-size:11.5px;
                font-family:"IBM Plex Mono",monospace; }
   .note-actions button { background:none; border:none; color:var(--accent); font-size:13px;
@@ -265,12 +341,35 @@
   <div class="week" id="weekGrid"></div>
 </div>
 
+<div id="progressTab" style="display:none">
+  <div class="weekhead">
+    <h2>Workouts</h2>
+    <div class="yearnav">
+      <button id="yrPrev" onclick="shiftYear(-1)" aria-label="Previous year">&#8249;</button>
+      <span class="yr" id="yrLabel"></span>
+      <button id="yrNext" onclick="shiftYear(1)" aria-label="Next year">&#8250;</button>
+    </div>
+  </div>
+  <div id="progressBody"><p class="muted" style="padding:14px 4px">Loading&hellip;</p></div>
+</div>
+
 <nav class="tabbar">
   <button id="tab-today" class="active" onclick="switchTab('today')">Today</button>
   <button id="tab-week" onclick="switchTab('week')">Week</button>
+  <button id="tab-progress" onclick="switchTab('progress')">Progress</button>
   <button id="tab-notes" onclick="switchTab('notes')">Notes</button>
   <button id="tab-lists" onclick="switchTab('lists')">Lists</button>
 </nav>
+
+<!-- Workout picker -->
+<div class="modal-bg" id="wkModal">
+  <div class="modal">
+    <h3 id="wkTitle">Workout</h3>
+    <div class="wk-sub" id="wkSub"></div>
+    <div class="wk-btns" id="wkBtns"></div>
+    <div class="wk-month" id="wkMonth"></div>
+  </div>
+</div>
 
 <button class="fab" id="fab" onclick="openAdd()">+</button>
 <div class="toast" id="toast"></div>
@@ -284,11 +383,16 @@
     <label>Repeats</label>
     <select id="addRec">
       <option value="daily">Every day (tracks streak)</option>
+      <option value="weekdays">Certain days of the week</option>
       <option value="weekly">Every week</option>
       <option value="biweekly">Every 2 weeks</option>
       <option value="monthly">Every month</option>
       <option value="once">One time only</option>
     </select>
+    <div id="dayPickWrap" style="display:none">
+      <label>On these days</label>
+      <div class="daypick" id="dayPick"></div>
+    </div>
     <label>Date (the first — or only — day it happens)</label>
     <input id="addDate" type="date">
     <div class="two">
@@ -309,6 +413,13 @@
       <option value="learning">Learning</option>
       <option value="home">Home</option>
       <option value="family">Family</option>
+    </select>
+    <label>Workout? (gives it Done / Short Morning / Skipped and counts it on Progress)</label>
+    <select id="addWorkout">
+      <option value="">No</option>
+      <option value="full">Yes &mdash; full session</option>
+      <option value="short">Yes &mdash; Short Morning</option>
+      <option value="walk">Yes &mdash; walk</option>
     </select>
     <label>Nag me if not done by (optional — sends a push)</label>
     <input id="addNag" type="time">
@@ -361,6 +472,7 @@ const fmtTime = t => {
 };
 
 let tasks = [], comps = [], notes = [], items = [];
+let wtasks = [];   // every workout task, retired ones included (for the monthly tally)
 let authed = false;
 
 // --- auth -------------------------------------------------------------
@@ -402,9 +514,11 @@ function switchTab(t) {
   curTab = t;
   document.getElementById('app').style.display = (t === 'today' && authed) ? 'block' : 'none';
   document.getElementById('weekTab').style.display = (t === 'week' && authed) ? 'block' : 'none';
+  document.getElementById('progressTab').style.display = (t === 'progress' && authed) ? 'block' : 'none';
   document.getElementById('notesTab').style.display = (t === 'notes' && authed) ? 'block' : 'none';
   document.getElementById('listsTab').style.display = (t === 'lists' && authed) ? 'block' : 'none';
-  ['today', 'week', 'notes', 'lists'].forEach(x =>
+  if (t === 'progress' && authed) loadProgress();
+  ['today', 'week', 'progress', 'notes', 'lists'].forEach(x =>
     document.getElementById('tab-' + x).classList.toggle('active', x === t));
   document.getElementById('fab').style.display = (t === 'today' || t === 'week') ? 'block' : 'none';
 }
@@ -443,7 +557,7 @@ async function load() {
   if (!(await session())) {
     authed = false;
     document.getElementById('loginNote').style.display = 'block';
-    ['app', 'weekTab', 'notesTab', 'listsTab'].forEach(x => document.getElementById(x).style.display = 'none');
+    ['app', 'weekTab', 'progressTab', 'notesTab', 'listsTab'].forEach(x => document.getElementById(x).style.display = 'none');
     document.getElementById('fab').style.display = 'none';
     return;
   }
@@ -460,7 +574,10 @@ async function load() {
       api('notes?order=created_at.desc&limit=200'),
       api('list_items?order=created_at.asc')
     ]);
+    [wtasks, voices] = await Promise.all([loadWorkoutTasks(), loadVoices()]);
     render(); renderWeek(); renderNotes(); renderLists();
+    refreshNotes();   // gets private playback links, then redraws the Notes tab
+    if (curTab === 'progress') loadProgress();
   } catch (e) {
     toast('Could not load — check settings. ' + e.message.slice(0, 80));
   }
@@ -492,6 +609,7 @@ function dueOn(t, when, strictOnce) {
     return diff >= 0 && !comps.some(c => c.task_id === t.id);
   }
   if (diff < 0) return false;
+  if (rec === 'weekdays') return Array.isArray(t.weekdays) && t.weekdays.includes(isoDow(day));
   if (rec === 'weekly') return day.getDay() === anchor.getDay();
   if (rec === 'biweekly') return day.getDay() === anchor.getDay() && Math.floor(diff / 7) % 2 === 0;
   if (rec === 'monthly') {
@@ -501,6 +619,29 @@ function dueOn(t, when, strictOnce) {
   return false;
 }
 function isDueToday(t) { return dueOn(t, new Date(), false); }
+
+const WDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const isoDow = d => (d.getDay() + 6) % 7;            // 0 = Monday ... 6 = Sunday
+// {0,1,2,3,4} -> "weekdays", {6,0,1,2,3} -> "Sun–Thu", {0,3} -> "Mon/Thu"
+function daysLabel(arr) {
+  const set = new Set(arr || []);
+  if (set.size === 7) return 'every day';
+  if ([...set].sort().join() === '0,1,2,3,4') return 'weekdays';
+  if ([...set].sort().join() === '5,6') return 'weekends';
+  if (!set.size) return '';
+  let start = 0;
+  while (!(set.has(start) && !set.has((start + 6) % 7))) start++;   // first day after a gap
+  const runs = [];
+  for (let i = 0; i < 7; i++) {
+    const d = (start + i) % 7;
+    if (!set.has(d)) continue;
+    const last = runs[runs.length - 1];
+    if (last && (last[1] + 1) % 7 === d) last[1] = d; else runs.push([d, d]);
+  }
+  if (!runs.some(r => (r[1] - r[0] + 7) % 7 >= 2)) return [...set].sort().map(i => WDAY[i]).join('/');
+  return runs.map(r => r[0] === r[1] ? WDAY[r[0]]
+    : (r[1] - r[0] + 7) % 7 === 1 ? WDAY[r[0]] + '/' + WDAY[r[1]] : WDAY[r[0]] + '\u2013' + WDAY[r[1]]).join('/');
+}
 
 const AREAS = { training:'TRAINING', health:'HEALTH', learning:'LEARNING', home:'HOME', family:'FAMILY' };
 const areaChip = a => (a && AREAS[a]) ? '<span class="lab ' + a + '">' + AREAS[a] + '</span>' : '';
@@ -517,7 +658,8 @@ function fmtRange(t) {
 }
 
 function render() {
-  const due = tasks.filter(t => t.kind !== 'checkin' && isDueToday(t));
+  const byTime = (a, b) => (a.time_of_day || '99') < (b.time_of_day || '99') ? -1 : (a.time_of_day || '99') > (b.time_of_day || '99') ? 1 : 0;
+  const due = tasks.filter(t => t.kind !== 'checkin' && isDueToday(t)).sort(byTime);
   const sched = due.filter(t => t.time_of_day);
   const daily = due.filter(t => !t.time_of_day);
   const checkin = tasks.find(t => t.kind === 'checkin');
@@ -581,14 +723,19 @@ function renderList(cardId, listId, arr, showTime) {
   document.getElementById(listId).innerHTML = arr.map(t => {
     const done = doneToday(t.id);
     const skipped = done && done.value === 'skip';
+    const short = done && done.value === 'short';
     const rec = t.recurrence || 'daily';
     const s = rec === 'daily' ? streak(t.id) : 0;
-    const recLabel = { weekly: 'weekly', biweekly: 'every 2 wks', monthly: 'monthly', once: 'one-time' }[rec];
-    return '<div class="b' + (skipped ? ' skipped' : done ? ' done' : '') + '">' +
-      '<button class="check" onclick="toggle(\'' + t.id + '\')">' + (skipped ? '&#8211;' : '&#10003;') + '</button>' +
+    const recLabel = rec === 'weekdays' ? daysLabel(t.weekdays)
+      : { weekly: 'weekly', biweekly: 'every 2 wks', monthly: 'monthly', once: 'one-time' }[rec];
+    const tap = t.workout ? 'openWorkout' : 'toggle';
+    return '<div class="b' + (skipped ? ' skipped' : done ? ' done' : '') + (short ? ' short' : '') + '">' +
+      '<button class="check" onclick="' + tap + '(\'' + t.id + '\')" aria-label="' + (t.workout ? 'Log workout' : 'Check off') + '">' +
+        (skipped ? '&#8211;' : short ? 'S' : '&#10003;') + '</button>' +
       '<span class="t">' + (fmtRange(t) || '\u2014') + '</span>' +
       '<span class="d" onclick="openTask(\'' + t.id + '\')"><span class="ttl">' + esc(t.title) + '</span>' +
         areaChip(t.area) +
+        (short ? '<span class="res">SHORT MORNING</span>' : '') +
         (recLabel ? '<span class="recl">\u00b7 ' + recLabel + '</span>' : '') +
         (t.nag_time && !done ? '<span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') +
       '</span>' +
@@ -619,16 +766,78 @@ async function toggle(id) {
 }
 
 // --- Notes ---
+// Text notes live in the notes table. Voice recordings ("Hey Siri, Record This")
+// live in the PRIVATE storage bucket voice-notes; a note row points at one via
+// audio_path. A recording with no note row (the shortcut stopped after the
+// upload) still shows up here, so nothing recorded is ever lost.
+// Playback uses short-lived private links (1 hour) that only work because
+// you're signed in -- there is no public address for any recording.
+const VOICE_BUCKET = 'voice-notes';
+let voices = [];                 // storage objects: { name, created_at, metadata }
+const voiceUrls = new Map();     // name -> { url, exp } or { missing: true }
+
+async function loadVoices() {
+  try {
+    const { data, error } = await client().storage.from(VOICE_BUCKET)
+      .list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) return [];
+    return (data || []).filter(o => o.name && !o.name.startsWith('.'));
+  } catch (e) { return []; }
+}
+
+// One batched request for any recording without a fresh link.
+async function signVoices(list) {
+  const now = Date.now();
+  const need = [...new Set(list.map(n => n.audio_path))]
+    .filter(p => { const v = voiceUrls.get(p); return !v || v.missing || v.exp < now + 5 * 60e3; });
+  if (!need.length) return;
+  try {
+    const { data, error } = await client().storage.from(VOICE_BUCKET).createSignedUrls(need, 3600);
+    if (error) return;
+    (data || []).forEach(r => voiceUrls.set(r.path || need[data.indexOf(r)],
+      r.signedUrl && !r.error ? { url: r.signedUrl, exp: now + 3600e3 } : { missing: true }));
+  } catch (e) { /* offline: players show "unavailable" until next refresh */ }
+}
+
+// Notes + voice memos, newest first.
+function noteFeed() {
+  const linked = new Set(notes.map(n => n.audio_path).filter(Boolean));
+  const orphans = voices.filter(v => !linked.has(v.name)).map(v => ({
+    id: 'v:' + v.name, content: '', audio_path: v.name, created_at: v.created_at, orphan: true
+  }));
+  return [...notes, ...orphans].sort((a, b) => a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0);
+}
+
+async function refreshNotes() {
+  await signVoices(noteFeed().filter(n => n.audio_path));
+  renderNotes();
+}
+
+function voicePlayer(n) {
+  const v = voiceUrls.get(n.audio_path);
+  if (!v) return '<div class="voice"><span class="vic">&#127908;</span><span class="muted">Loading recording&hellip;</span></div>';
+  if (v.missing) return '<div class="voice"><span class="vic">&#127908;</span><span class="muted">Recording not found &mdash; the upload may not have finished.</span></div>';
+  return '<div class="voice"><span class="vic">&#127908;</span><audio controls preload="none" src="' + esc(v.url).replace(/"/g, '&quot;') + '"></audio></div>';
+}
+
 function renderNotes() {
-  document.getElementById('notesList').innerHTML = notes.map(n =>
-    '<div class="note-item">' + esc(n.content) +
-    '<div class="note-meta"><span>' +
-    new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-    '</span><span class="note-actions">' +
-    '<button onclick="shareNote(\'' + n.id + '\')">Share</button>' +
-    '<button onclick="copyNote(\'' + n.id + '\')">Copy</button>' +
-    '<button style="color:var(--red)" onclick="delNote(\'' + n.id + '\')">Delete</button>' +
-    '</span></div></div>').join('') ||
+  const feed = noteFeed();
+  document.getElementById('notesList').innerHTML = feed.map(n => {
+    const text = (n.content || '').trim();
+    const isVoice = !!n.audio_path;
+    const when = new Date(n.created_at);
+    const stamp = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      (isVoice ? ' · ' + when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
+    return '<div class="note-item' + (isVoice ? ' is-voice' : '') + '">' +
+      (isVoice ? voicePlayer(n) : '') +
+      (text && !(isVoice && text === 'Voice memo') ? '<div class="note-text">' + esc(text) + '</div>'
+        : isVoice ? '<div class="note-text muted">Voice memo</div>' : '') +
+      '<div class="note-meta"><span>' + stamp + '</span><span class="note-actions">' +
+      '<button onclick="shareNote(\'' + n.id + '\')">Share</button>' +
+      (text && !isVoice || (isVoice && text && text !== 'Voice memo') ? '<button onclick="copyNote(\'' + n.id + '\')">Copy</button>' : '') +
+      '<button style="color:var(--red)" onclick="delNote(\'' + n.id + '\')">Delete</button>' +
+      '</span></div></div>';
+  }).join('') ||
     '<p class="muted" style="margin-top:16px;text-align:center">No notes yet.</p>';
 }
 async function addNote() {
@@ -641,9 +850,27 @@ async function addNote() {
     renderNotes(); toast('Saved');
   } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
 }
-const noteById = id => notes.find(n => n.id === id);
+const noteById = id => noteFeed().find(n => n.id === id);
 async function shareNote(id) {
-  if (navigator.share) { try { await navigator.share({ text: noteById(id).content }); } catch (e) {} }
+  const n = noteById(id);
+  if (!n) return;
+  const text = (n.content || '').trim();
+  if (n.audio_path) {
+    // Share the recording itself (AirDrop, Messages, save to Files...).
+    const v = voiceUrls.get(n.audio_path);
+    if (!v || v.missing) { toast('Recording not available'); return; }
+    try {
+      const blob = await (await fetch(v.url)).blob();
+      const file = new File([blob], n.audio_path, { type: blob.type || 'audio/mp4' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: text && text !== 'Voice memo' ? text : undefined });
+        return;
+      }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    toast('Sharing recordings isn’t supported in this browser');
+    return;
+  }
+  if (navigator.share) { try { await navigator.share({ text }); } catch (e) {} }
   else copyNote(id);
 }
 async function copyNote(id) {
@@ -651,11 +878,22 @@ async function copyNote(id) {
   catch (e) { toast('Copy failed'); }
 }
 async function delNote(id) {
-  if (!confirm('Delete note?')) return;
+  const n = noteById(id);
+  if (!n) return;
+  if (!confirm(n.audio_path ? 'Delete this recording? It can’t be undone.' : 'Delete note?')) return;
   try {
-    await api('notes?id=eq.' + id, { method: 'DELETE' });
-    notes = notes.filter(n => n.id !== id); renderNotes();
-  } catch (e) { toast('Delete failed'); }
+    if (n.audio_path) {
+      const { error } = await client().storage.from(VOICE_BUCKET).remove([n.audio_path]);
+      if (error) throw new Error(error.message);
+      voices = voices.filter(v => v.name !== n.audio_path);
+      voiceUrls.delete(n.audio_path);
+    }
+    if (!n.orphan) {
+      await api('notes?id=eq.' + id, { method: 'DELETE' });
+      notes = notes.filter(x => x.id !== id);
+    }
+    renderNotes(); toast('Deleted');
+  } catch (e) { toast('Delete failed: ' + String(e.message || e).slice(0, 80)); }
 }
 
 // --- Lists ---
@@ -728,11 +966,12 @@ function renderWeek() {
     const dayName = d.toLocaleDateString(undefined, { weekday: 'long' });
     const list = tasks
       .filter(t => t.kind !== 'checkin' && dueOn(t, d, true))
-      .sort((a, b) => (a.time_of_day || '~').localeCompare(b.time_of_day || '~'));
+      .sort((a, b) => (a.time_of_day || '99') < (b.time_of_day || '99') ? -1 : (a.time_of_day || '99') > (b.time_of_day || '99') ? 1 : 0);
     const rows = list.length
       ? list.map(t => '<div class="wb" onclick="openTask(\'' + t.id + '\')">' +
           '<span class="t">' + (fmtRange(t) || '\u2014') + '</span>' +
-          '<span class="d"><span class="ttl">' + esc(t.title) + '</span>' + areaChip(t.area) + '</span></div>').join('')
+          '<span class="d"><span class="ttl">' + esc(t.title) + '</span>' + areaChip(t.area) + '</span>' +
+          weekMark(t, iso) + '</div>').join('')
       : '<div class="empty">Nothing planned yet.</div>';
     return '<div class="day' + (iso === todayStr() ? ' is-today' : '') + '">' +
       '<div class="day-h"><span class="dname">' + dayName +
@@ -744,18 +983,283 @@ function renderWeek() {
   }).join('');
 }
 
+// A small done / short / skipped mark on the Week cards for days already logged.
+function weekMark(t, iso) {
+  const c = comps.find(x => x.task_id === t.id && x.day === iso);
+  if (!c) return '<span></span>';
+  if (c.value === 'skip') return '<span class="wmark skip" title="Skipped">&#8211;</span>';
+  if (c.value === 'short') return '<span class="wmark short" title="Short Morning">S</span>';
+  return '<span class="wmark done" title="Done">&#10003;</span>';
+}
+
+// ======================================================================
+// Workouts: Done / Short Morning / Skipped, and the monthly tally
+//
+// A task is a workout when tasks.workout is set:
+//   'full'  -> Push / Pull / Legs mini   (picker: Done, Short Morning, Skipped)
+//   'short' -> a planned Short Morning   (picker: Done, Skipped)
+//   'walk'  -> the Saturday walk          (picker: Done, Short Morning, Skipped)
+// The result lives in completions.value: null = done as planned,
+// 'short' = swapped for a Short Morning, 'skip' = skipped. Nothing is ever
+// thrown away, so every past month and year stays reviewable.
+// ======================================================================
+const WK_COLOR = { full: 'var(--c-full)', short: 'var(--c-short)', walk: 'var(--c-walk)', skip: 'var(--c-skip)' };
+const WK_NAME = { full: 'Full sessions', short: 'Short Mornings', walk: 'Walks', skip: 'Skipped', none: 'Not logged' };
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+async function loadWorkoutTasks() {
+  // Fails quietly (empty list) until update_7_8_all_at_once.sql has added the column.
+  try {
+    return await api('tasks?workout=not.is.null&select=id,title,kind,recurrence,anchor_date,weekdays,workout,retired_on,active');
+  } catch (e) { return []; }
+}
+
+// Was this workout on the plan for that day? Retired tasks count only before they retired.
+function plannedOn(t, d) {
+  if (t.retired_on && isoOf(d) >= t.retired_on) return false;
+  return dueOn(t, d, true);
+}
+
+// What a logged completion counts as.
+function resultOf(t, c) {
+  if (!c) return 'none';
+  if (c.value === 'skip') return 'skip';
+  if (c.value === 'short') return 'short';
+  return t.workout || 'full';
+}
+
+let wkId = null;
+function openWorkout(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  wkId = id;
+  const cur = doneToday(id);
+  const now = cur ? (cur.value === 'skip' ? 'skip' : cur.value === 'short' ? 'short' : 'done') : null;
+  const kind = t.workout || 'full';
+  const opts = [
+    ['done', kind === 'short' ? 'Done' : kind === 'walk' ? 'Done \u2014 walked' : 'Done \u2014 full session',
+      kind === 'short' ? 'Walk + stretch, as planned' : 'Did what was planned', '&#10003;', WK_COLOR[kind]],
+    ...(kind === 'short' ? [] : [['short', 'Short Morning instead', 'Walk + stretch. It counts.', 'S', WK_COLOR.short]]),
+    ['skip', 'Skipped', 'No workout today', '&#8211;', WK_COLOR.skip]
+  ];
+  document.getElementById('wkTitle').textContent = t.title;
+  document.getElementById('wkSub').textContent = fmtRange(t) ? 'Planned ' + fmtRange(t) : 'How did it go?';
+  document.getElementById('wkBtns').innerHTML = opts.map(o =>
+    '<button class="' + (now === o[0] ? 'cur' : '') + '" onclick="setWorkout(\'' + o[0] + '\')">' +
+      '<span class="ic" style="background:' + o[4] + '">' + o[3] + '</span>' +
+      '<span>' + o[1] + '<span class="sub">' + o[2] + '</span></span></button>').join('') +
+    (cur ? '<button class="clear" onclick="setWorkout(\'clear\')">Clear today\u2019s entry</button>' : '');
+  const m = monthSoFar();
+  document.getElementById('wkMonth').textContent = m.planned
+    ? MONTHS[new Date().getMonth()] + ' so far: ' + m.done + ' done (' + m.short + ' short) \u00b7 ' + m.skip + ' skipped'
+    : '';
+  document.getElementById('wkModal').classList.add('open');
+}
+
+async function setWorkout(val) {
+  const id = wkId, cur = doneToday(id);
+  try {
+    if (val === 'clear') {
+      if (cur) {
+        await api('completions?id=eq.' + cur.id, { method: 'DELETE' });
+        comps = comps.filter(x => x.id !== cur.id);
+      }
+    } else {
+      const value = val === 'done' ? null : val;
+      if (cur) {
+        await api('completions?id=eq.' + cur.id, { method: 'PATCH', body: JSON.stringify({ value }) });
+        cur.value = value;
+      } else {
+        const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr(), value }) });
+        comps.push(rows[0]);
+      }
+    }
+    closeModal('wkModal');
+    progCache = null;
+    render(); renderWeek();
+    toast({ done: 'Logged \u2014 nice work', short: 'Short Morning logged. It counts.', skip: 'Logged as skipped', clear: 'Cleared' }[val]);
+  } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
+}
+
+// This month's numbers from the last-60-days completions already in memory.
+function monthSoFar() {
+  const out = { planned: 0, done: 0, short: 0, skip: 0 };
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const byKey = new Map(comps.map(c => [c.task_id + '|' + c.day, c]));
+  for (let d = new Date(now.getFullYear(), now.getMonth(), 1); d <= now; d.setDate(d.getDate() + 1)) {
+    for (const t of wtasks) {
+      if (!plannedOn(t, d)) continue;
+      const c = byKey.get(t.id + '|' + isoOf(d));
+      if (!c && isoOf(d) === todayStr()) continue;
+      out.planned++;
+      const r = resultOf(t, c);
+      if (r === 'skip') out.skip++;
+      else if (r !== 'none') { out.done++; if (r === 'short') out.short++; }
+    }
+  }
+  return out;
+}
+
+// --- Progress tab ---
+let progYear = new Date().getFullYear(), progCache = null, progOpen = null;
+function shiftYear(n) { progYear += n; progOpen = null; loadProgress(); }
+
+async function loadProgress() {
+  const body = document.getElementById('progressBody');
+  const thisYear = new Date().getFullYear();
+  document.getElementById('yrLabel').textContent = progYear;
+  document.getElementById('yrNext').disabled = progYear >= thisYear;
+  if (progCache && progCache.year === progYear) { renderProgress(); return; }
+  body.innerHTML = '<p class="muted" style="padding:14px 4px">Loading&hellip;</p>';
+  try {
+    wtasks = await loadWorkoutTasks();
+    let yc = [];
+    if (wtasks.length) {
+      yc = await api('completions?select=task_id,day,value&task_id=in.(' + wtasks.map(t => t.id).join(',') + ')' +
+        '&day=gte.' + progYear + '-01-01&day=lte.' + progYear + '-12-31');
+    }
+    progCache = { year: progYear, yc };
+    renderProgress();
+  } catch (e) { body.innerHTML = '<p class="muted" style="padding:14px 4px">Could not load: ' + esc(e.message.slice(0, 80)) + '</p>'; }
+}
+
+// Builds one row per planned-or-logged workout for the year, then counts by month.
+function yearLog(year, yc) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tIso = isoOf(today);
+  const byKey = new Map(yc.map(c => [c.task_id + '|' + c.day, c]));
+  const tmap = new Map(wtasks.map(t => [t.id, t]));
+  const seen = new Set(), log = [];
+  const end = new Date(year, 11, 31);
+  for (let d = new Date(year, 0, 1); d <= end && d <= today; d.setDate(d.getDate() + 1)) {
+    const iso = isoOf(d);
+    for (const t of wtasks) {
+      if (!plannedOn(t, d)) continue;
+      const c = byKey.get(t.id + '|' + iso);
+      if (!c && iso === tIso) continue;          // today isn't "missed" yet
+      seen.add(t.id + '|' + iso);
+      log.push({ day: iso, task: t, result: resultOf(t, c) });
+    }
+  }
+  // Logged on a day it wasn't planned (a make-up session) still counts.
+  for (const c of yc) {
+    const k = c.task_id + '|' + c.day;
+    if (seen.has(k) || !tmap.has(c.task_id)) continue;
+    log.push({ day: c.day, task: tmap.get(c.task_id), result: resultOf(tmap.get(c.task_id), c), extra: true });
+  }
+  return log.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
+}
+
+function tally(rows) {
+  const o = { full: 0, short: 0, walk: 0, skip: 0, none: 0 };
+  rows.forEach(r => o[r.result]++);
+  o.done = o.full + o.short + o.walk;
+  o.planned = rows.filter(r => !r.extra).length;
+  return o;
+}
+
+function renderProgress() {
+  const body = document.getElementById('progressBody');
+  if (!wtasks.length) {
+    body.innerHTML = '<div class="card"><p class="muted">No workouts tagged yet. Run <b>update_7_8_all_at_once.sql</b> in Supabase, ' +
+      'or edit any task and set <b>Workout?</b> to Yes.</p></div>';
+    return;
+  }
+  const log = yearLog(progYear, progCache.yc);
+  const now = new Date();
+  const isThisYear = progYear === now.getFullYear();
+  const months = MONTHS.map((_, m) => tally(log.filter(r => +r.day.slice(5, 7) === m + 1)));
+  const yr = tally(log);
+  const pct = o => o.planned ? Math.round(100 * Math.min(o.done, o.planned) / o.planned) + '%' : '\u2014';
+  const cm = isThisYear ? months[now.getMonth()] : null;
+  const best = months.map((o, i) => [o.done, i]).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0])[0];
+
+  const tile = (k, v, n) => '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="n">' + n + '</div></div>';
+  let h = '<div class="tiles">' +
+    (cm ? tile(MONTHS[now.getMonth()] + ' so far', cm.done + '<small> / ' + cm.planned + '</small>', pct(cm) + ' of planned mornings')
+        : tile('Best month', best ? best[0] : '\u2014', best ? MONTHS[best[1]] : 'nothing logged')) +
+    tile(progYear + (isThisYear ? ' to date' : ' total'), yr.done + '<small> / ' + yr.planned + '</small>', pct(yr) + ' of planned mornings') +
+    tile('Short Mornings', yr.short, 'counted as done') +
+    tile('Skipped', yr.skip, yr.none ? yr.none + ' more not logged' : 'nothing left unlogged') +
+    '</div>';
+
+  const segs = ['full', 'short', 'walk', 'skip'];
+  h += '<div class="card"><h2>Month by month</h2><div class="plegend">' +
+    segs.map(k => '<span><i class="sq" style="background:' + WK_COLOR[k] + '"></i>' + WK_NAME[k] + '</span>').join('') +
+    '<span><i class="sq" style="background:var(--c-none)"></i>' + WK_NAME.none + '</span></div>';
+  months.forEach((o, i) => {
+    const future = isThisYear && i > now.getMonth();
+    const total = o.planned + o.full + o.short + o.walk + o.skip + o.none ? Math.max(o.planned, o.done + o.skip + o.none) : 0;
+    let bar;
+    if (!total) bar = '<div class="mbar empty"></div>';
+    else bar = '<div class="mbar">' + [...segs, 'none'].filter(k => o[k]).map(k =>
+      '<i style="flex:' + o[k] + ' 1 0;background:' + (k === 'none' ? 'var(--c-none)' : WK_COLOR[k]) + '"></i>').join('') + '</div>';
+    const open = progOpen === i && total;
+    h += '<div class="mrow' + (future ? ' future' : '') + (open ? ' open' : '') + '"' + (total ? ' onclick="toggleMonth(' + i + ')"' : '') + '>' +
+      '<span class="m">' + MONTHS[i] + '</span>' + bar +
+      '<span class="cnt">' + (total ? '<b>' + o.done + '</b><span> / ' + o.planned + '</span>' : '<span>\u2014</span>') + '</span>' +
+      (open ? '<div class="mdetail">' +
+        segs.concat('none').map(k => WK_NAME[k] + ' <b>' + o[k] + '</b>').join(' \u00b7 ') +
+        '<br>' + pct(o) + ' of ' + o.planned + ' planned mornings</div>' : '') +
+      '</div>';
+  });
+  h += '</div>';
+  h += '<button class="pbtn" onclick="exportYear()">Save ' + progYear + ' as a spreadsheet (CSV)</button>' +
+    '<p class="pfoot">Tap a month for the breakdown. Every entry stays in your database, so past years are always here: use &#8249; to look back. ' +
+    '"Done" = full sessions + Short Mornings + walks.</p>';
+  body.innerHTML = h;
+}
+
+function toggleMonth(i) { progOpen = progOpen === i ? null : i; renderProgress(); }
+
+async function exportYear() {
+  const log = yearLog(progYear, progCache.yc);
+  const label = { full: 'done (full)', short: 'short morning', walk: 'done (walk)', skip: 'skipped', none: 'not logged' };
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  const csv = ['date,weekday,workout,planned as,result,note'].concat(log.map(r =>
+    [r.day, WDAY[isoDow(new Date(r.day + 'T00:00:00'))], q(r.task.title), r.task.workout || 'full',
+     label[r.result], r.extra ? 'extra session' : ''].join(','))).join('\n');
+  const name = 'workouts-' + progYear + '.csv';
+  const file = new File([csv], name, { type: 'text/csv' });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
 let editingId = null;
 
 function resetTaskForm() {
   ['addTitle', 'addTime', 'addEnd', 'addNag'].forEach(x => document.getElementById(x).value = '');
   document.getElementById('addArea').value = '';
+  document.getElementById('addWorkout').value = '';
+  setPickedDays([]);
 }
+
+// "Certain days of the week" picker
+let pickedDays = [];
+function setPickedDays(arr) {
+  pickedDays = [...(arr || [])];
+  document.getElementById('dayPick').innerHTML = WDAY.map((n, i) =>
+    '<button type="button" class="' + (pickedDays.includes(i) ? 'on' : '') + '" onclick="toggleDay(' + i + ')">' + n.slice(0, 2) + '</button>').join('');
+  document.getElementById('dayPickWrap').style.display =
+    document.getElementById('addRec').value === 'weekdays' ? 'block' : 'none';
+}
+function toggleDay(i) {
+  pickedDays = pickedDays.includes(i) ? pickedDays.filter(x => x !== i) : [...pickedDays, i].sort((a, b) => a - b);
+  setPickedDays(pickedDays);
+}
+document.getElementById('addRec').addEventListener('change', () => setPickedDays(pickedDays));
 
 function openAdd() {
   editingId = null;
   document.getElementById('addModalTitle').textContent = 'New task';
   resetTaskForm();
   document.getElementById('addRec').value = 'daily';
+  setPickedDays([]);
   document.getElementById('addDate').value = todayStr();
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('addModal').classList.add('open');
@@ -769,6 +1273,7 @@ function openDay(iso) {
     'Add to ' + new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' });
   resetTaskForm();
   document.getElementById('addRec').value = 'weekly';
+  setPickedDays([]);
   document.getElementById('addDate').value = iso;
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('addModal').classList.add('open');
@@ -786,6 +1291,8 @@ function openTask(id) {
   document.getElementById('addEnd').value = (t.end_time || '').slice(0, 5);
   document.getElementById('addNag').value = (t.nag_time || '').slice(0, 5);
   document.getElementById('addArea').value = t.area || '';
+  document.getElementById('addWorkout').value = t.workout || '';
+  setPickedDays(t.weekdays || []);
   document.getElementById('deleteTaskBtn').style.display = 'block';
   document.getElementById('addModal').classList.add('open');
 }
@@ -806,6 +1313,8 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 async function saveTask() {
   const title = document.getElementById('addTitle').value.trim();
   if (!title) { toast('Give it a name'); return; }
+  const recSel = document.getElementById('addRec').value;
+  if (recSel === 'weekdays' && !pickedDays.length) { toast('Pick at least one day'); return; }
   const body = {
     title, kind: 'task',
     recurrence: document.getElementById('addRec').value,
@@ -815,6 +1324,12 @@ async function saveTask() {
     nag_time: document.getElementById('addNag').value || null,
     area: document.getElementById('addArea').value || null
   };
+  // Only send the newer columns when they're used, so the app keeps working
+  // on a database that hasn't had update_7 yet.
+  const wk = document.getElementById('addWorkout').value || null;
+  const editing = editingId && tasks.find(x => x.id === editingId);
+  if (recSel === 'weekdays' || (editing && 'weekdays' in editing)) body.weekdays = recSel === 'weekdays' ? pickedDays : null;
+  if (wk || (editing && 'workout' in editing)) body.workout = wk;
   try {
     if (editingId) {
       const rows = await api('tasks?id=eq.' + editingId, { method: 'PATCH', body: JSON.stringify(body) });
@@ -826,6 +1341,7 @@ async function saveTask() {
       tasks.push(rows[0]); toast('Added');
     }
     editingId = null;
+    wtasks = await loadWorkoutTasks(); progCache = null;
     closeModal('addModal');
     resetTaskForm();
     render(); renderWeek();
@@ -841,7 +1357,7 @@ function openSettings() {
   document.getElementById('setNtfy').value = c.ntfy;
   document.getElementById('manageList').innerHTML = tasks.length
     ? tasks.map(t => '<div class="manage-item"><span>' + esc(t.title) +
-        ' <span class="muted">(' + (t.kind === 'checkin' ? 'check-in' : (t.recurrence || 'daily')) + ')</span></span>' +
+        ' <span class="muted">(' + (t.kind === 'checkin' ? 'check-in' : t.recurrence === 'weekdays' ? daysLabel(t.weekdays) : (t.recurrence || 'daily')) + ')</span></span>' +
         '<button class="del" onclick="delTask(\'' + t.id + '\')">&#10005;</button></div>').join('')
     : 'No tasks yet.';
   document.getElementById('settingsModal').classList.add('open');

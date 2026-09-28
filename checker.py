@@ -4,8 +4,9 @@ Overdue-task checker for the My Day assistant.
 Runs on a schedule (GitHub Actions). Sends ntfy pushes for:
   - tasks due today that passed their nag_time without being completed
   - an end-of-day wrap-up (done / skipped / still open)
-  - a Sunday weekly review (completion counts, skips, screen-time streak)
-Understands recurrence: daily, weekly, biweekly, monthly, once.
+  - a Sunday weekly review (completion counts, skips, screen-time streak, workouts)
+  - a monthly workout recap on the 1st (done / short / skipped for last month)
+Understands recurrence: daily, weekdays (certain days), weekly, biweekly, monthly, once.
 """
 import os
 import calendar
@@ -101,6 +102,8 @@ def due_today(t, today):
         return False
     if rec == "once":
         return True  # due on its date, keeps nagging daily until completed
+    if rec == "weekdays":  # 0 = Mon ... 6 = Sun, same as date.weekday()
+        return today.weekday() in (t.get("weekdays") or [])
     if rec == "weekly":
         return today.weekday() == anchor.weekday()
     if rec == "biweekly":
@@ -109,6 +112,47 @@ def due_today(t, today):
         last = calendar.monthrange(today.year, today.month)[1]
         return today.day == min(anchor.day, last)
     return False
+
+
+def workout_tasks():
+    """Every workout task, retired ones included. Empty until update_7 has run."""
+    try:
+        return sb_get("tasks?workout=not.is.null&select=id,recurrence,anchor_date,weekdays,workout,retired_on")
+    except urllib.error.HTTPError:
+        return []
+
+
+def workout_tally(wts, start, end, today):
+    """Counts workouts planned between start and end (inclusive), skipping today
+    unless it has been logged. Returns dict: planned, done, short, skip, none."""
+    out = {"planned": 0, "done": 0, "short": 0, "skip": 0, "none": 0}
+    if not wts:
+        return out
+    ids = ",".join(t["id"] for t in wts)
+    cs = sb_get(f"completions?select=task_id,day,value&task_id=in.({ids})"
+                f"&day=gte.{start.isoformat()}&day=lte.{end.isoformat()}")
+    by = {(c["task_id"], c["day"]): c for c in cs}
+    d = start
+    while d <= end and d <= today:
+        for t in wts:
+            if t.get("retired_on") and d.isoformat() >= t["retired_on"]:
+                continue
+            if not due_today(t, d):
+                continue
+            c = by.get((t["id"], d.isoformat()))
+            if c is None and d == today:
+                continue
+            out["planned"] += 1
+            if c is None:
+                out["none"] += 1
+            elif c.get("value") == "skip":
+                out["skip"] += 1
+            else:
+                out["done"] += 1
+                if c.get("value") == "short" or t.get("workout") == "short":
+                    out["short"] += 1
+        d += timedelta(days=1)
+    return out
 
 
 def in_window(now, hhmm):
@@ -209,6 +253,17 @@ def main():
             yes = sum(1 for c in comps_week if c["task_id"] == ci["id"] and c.get("value") == "yes")
             # a bare count, so this one is safe to send either way
             screen_line = f"Screen-time: under limit {yes}/7 days"
+        wk = workout_tally(workout_tasks(), week[0], today, today)
+        wk_line = None
+        if wk["planned"]:
+            # counts only -- safe for minimal mode
+            wk_line = f"Workouts: {wk['done']}/{wk['planned']}"
+            if wk["short"]:
+                wk_line += f" ({wk['short']} short)"
+            if wk["skip"]:
+                wk_line += f", {wk['skip']} skipped"
+        if wk_line:
+            screen_line = wk_line + ("\n" + screen_line if screen_line else "")
         if lines or screen_line:
             if DETAILED:
                 body = "Weekly review:\n" + "\n".join(
@@ -221,6 +276,20 @@ def main():
                 if screen_line:
                     body += "\n" + screen_line
             push(body, title="My Day - weekly review", tags="bar_chart")
+
+    # --- monthly workout recap (1st of the month, for last month) ---
+    if today.day == 1 and in_window(now, WEEKLY_TIME):
+        last_end = today - timedelta(days=1)
+        last_start = last_end.replace(day=1)
+        wk = workout_tally(workout_tasks(), last_start, last_end, today)
+        if wk["planned"]:
+            pct = round(100 * min(wk["done"], wk["planned"]) / wk["planned"])
+            msg = (f"{last_start.strftime('%B')}: {wk['done']}/{wk['planned']} workouts ({pct}%). "
+                   f"Short Mornings {wk['short']} - skipped {wk['skip']}")
+            if wk["none"]:
+                msg += f" - not logged {wk['none']}"
+            msg += ". Full year on the Progress tab."
+            push(msg, title="My Day - monthly workouts", tags="muscle")
 
     print(f"{now.isoformat()} - {len(due)} task(s) due today, sent {nagged} nag(s)")
 
