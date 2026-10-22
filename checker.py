@@ -24,7 +24,7 @@ MYDAY_PASSWORD = os.environ["MYDAY_PASSWORD"]
 TZ = ZoneInfo(os.environ.get("TZ_NAME", "America/Chicago"))
 
 NAG_WINDOW_MIN = 35  # matches the 30-minute schedule, with a little slack
-BRIEFING_TIME = os.environ.get("BRIEFING_TIME", "07:00") # morning briefing push
+BRIEFING_TIME = os.environ.get("BRIEFING_TIME", "08:00") # morning briefing push
 SUMMARY_TIME = os.environ.get("SUMMARY_TIME", "20:30")   # end-of-day wrap-up push
 WEEKLY_TIME = os.environ.get("WEEKLY_TIME", "19:00")     # Sunday weekly review push
 
@@ -204,8 +204,12 @@ def main():
             msg = f"Today ({len(due)}): " + "; ".join(parts)
         else:
             msg = f"{len(due)} item(s) on today's list"
-            if timed:
-                msg += f", first at {fmt12(timed[0]['time_of_day'])}"
+            # the briefing goes out after the early-morning items, so point at
+            # what's still ahead instead of the 3:40 alarm
+            nowhm = now.strftime("%H:%M")
+            ahead = [t for t in timed if t["time_of_day"][:5] > nowhm]
+            if ahead:
+                msg += f", next at {fmt12(ahead[0]['time_of_day'])}"
             msg += ". Open My Day for the details."
         push(msg, title="My Day - morning briefing", tags="sunrise")
 

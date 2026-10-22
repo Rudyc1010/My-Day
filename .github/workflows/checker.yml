@@ -25,7 +25,7 @@ jobs:
           MYDAY_EMAIL: ${{ secrets.MYDAY_EMAIL }}
           MYDAY_PASSWORD: ${{ secrets.MYDAY_PASSWORD }}
           TZ_NAME: "America/Los_Angeles"
-          BRIEFING_TIME: "07:00"  # morning briefing push
+          BRIEFING_TIME: "08:00"  # morning briefing push (phone-free until ~8)
           SUMMARY_TIME: "20:30"   # end-of-day wrap-up push
           WEEKLY_TIME: "19:00"    # Sunday weekly review push
           PUSH_DETAIL: "minimal"  # "minimal" hides task names in pushes; "full" shows them
