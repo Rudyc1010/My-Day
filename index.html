@@ -414,12 +414,13 @@
       <option value="home">Home</option>
       <option value="family">Family</option>
     </select>
-    <label>Workout? (gives it Done / Short Morning / Skipped and counts it on Progress)</label>
+    <label>Workout? (gives it a Done / Skipped picker and counts it on Progress)</label>
     <select id="addWorkout">
       <option value="">No</option>
-      <option value="full">Yes &mdash; full session</option>
+      <option value="full">Yes &mdash; full session (Did it / Skipped)</option>
       <option value="short">Yes &mdash; Short Morning</option>
       <option value="walk">Yes &mdash; walk</option>
+      <option value="morning">Morning walk &mdash; Regular / Short + stretch (not counted)</option>
     </select>
     <label>Nag me if not done by (optional — sends a push)</label>
     <input id="addNag" type="time">
@@ -735,7 +736,7 @@ function renderList(cardId, listId, arr, showTime) {
       '<span class="t">' + (fmtRange(t) || '\u2014') + '</span>' +
       '<span class="d" onclick="openTask(\'' + t.id + '\')"><span class="ttl">' + esc(t.title) + '</span>' +
         areaChip(t.area) +
-        (short ? '<span class="res">SHORT MORNING</span>' : '') +
+        (short ? '<span class="res">' + (t.workout === 'morning' ? 'SHORT WALK' : 'SHORT MORNING') + '</span>' : '') +
         (recLabel ? '<span class="recl">\u00b7 ' + recLabel + '</span>' : '') +
         (t.nag_time && !done ? '<span class="nag-badge">by ' + fmtTime(t.nag_time) + '</span>' : '') +
       '</span>' +
@@ -996,9 +997,12 @@ function weekMark(t, iso) {
 // Workouts: Done / Short Morning / Skipped, and the monthly tally
 //
 // A task is a workout when tasks.workout is set:
-//   'full'  -> Push / Pull / Legs mini   (picker: Done, Short Morning, Skipped)
-//   'short' -> a planned Short Morning   (picker: Done, Skipped)
-//   'walk'  -> the Saturday walk          (picker: Done, Short Morning, Skipped)
+//   'full'    -> Bowflex Push / Pull / Legs (picker: Did it, Skipped)
+//   'short'   -> a planned Short Morning    (picker: Done, Skipped)
+//   'walk'    -> the weekend family walk    (picker: Done, Short Morning, Skipped)
+//   'morning' -> the Mon/Thu/Fri morning walk (picker: Regular walk, Short walk +
+//                stretch, Skipped). Not counted in the workout tally, so those
+//                days still count as ONE workout each (the Bowflex session).
 // The result lives in completions.value: null = done as planned,
 // 'short' = swapped for a Short Morning, 'skip' = skipped. Nothing is ever
 // thrown away, so every past month and year stays reviewable.
@@ -1010,7 +1014,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 async function loadWorkoutTasks() {
   // Fails quietly (empty list) until update_7_8_all_at_once.sql has added the column.
   try {
-    return await api('tasks?workout=not.is.null&select=id,title,kind,recurrence,anchor_date,weekdays,workout,retired_on,active');
+    return await api('tasks?workout=in.(full,short,walk)&select=id,title,kind,recurrence,anchor_date,weekdays,workout,retired_on,active');
   } catch (e) { return []; }
 }
 
@@ -1036,10 +1040,14 @@ function openWorkout(id) {
   const cur = doneToday(id);
   const now = cur ? (cur.value === 'skip' ? 'skip' : cur.value === 'short' ? 'short' : 'done') : null;
   const kind = t.workout || 'full';
-  const opts = [
-    ['done', kind === 'short' ? 'Done' : kind === 'walk' ? 'Done \u2014 walked' : 'Done \u2014 full session',
+  const opts = kind === 'morning' ? [
+    ['done', 'Regular walk', 'The full 20 minutes', '&#10003;', WK_COLOR.walk],
+    ['short', 'Short walk + stretch', 'Shorter walk, then stretch', 'S', WK_COLOR.short],
+    ['skip', 'Skipped', 'No walk today', '&#8211;', WK_COLOR.skip]
+  ] : [
+    ['done', kind === 'short' ? 'Done' : kind === 'walk' ? 'Done \u2014 walked' : 'Did it',
       kind === 'short' ? 'Walk + stretch, as planned' : 'Did what was planned', '&#10003;', WK_COLOR[kind]],
-    ...(kind === 'short' ? [] : [['short', 'Short Morning instead', 'Walk + stretch. It counts.', 'S', WK_COLOR.short]]),
+    ...(kind === 'walk' ? [['short', 'Short Morning instead', 'Walk + stretch. It counts.', 'S', WK_COLOR.short]] : []),
     ['skip', 'Skipped', 'No workout today', '&#8211;', WK_COLOR.skip]
   ];
   document.getElementById('wkTitle').textContent = t.title;
@@ -1050,7 +1058,7 @@ function openWorkout(id) {
       '<span>' + o[1] + '<span class="sub">' + o[2] + '</span></span></button>').join('') +
     (cur ? '<button class="clear" onclick="setWorkout(\'clear\')">Clear today\u2019s entry</button>' : '');
   const m = monthSoFar();
-  document.getElementById('wkMonth').textContent = m.planned
+  document.getElementById('wkMonth').textContent = m.planned && kind !== 'morning'
     ? MONTHS[new Date().getMonth()] + ' so far: ' + m.done + ' done (' + m.short + ' short) \u00b7 ' + m.skip + ' skipped'
     : '';
   document.getElementById('wkModal').classList.add('open');
@@ -1077,7 +1085,9 @@ async function setWorkout(val) {
     closeModal('wkModal');
     progCache = null;
     render(); renderWeek();
-    toast({ done: 'Logged \u2014 nice work', short: 'Short Morning logged. It counts.', skip: 'Logged as skipped', clear: 'Cleared' }[val]);
+    const morning = (tasks.find(x => x.id === id) || {}).workout === 'morning';
+    toast({ done: 'Logged \u2014 nice work', short: morning ? 'Short walk + stretch logged' : 'Short Morning logged. It counts.',
+            skip: 'Logged as skipped', clear: 'Cleared' }[val]);
   } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
 }
 
