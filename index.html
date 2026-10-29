@@ -187,6 +187,14 @@
   .btn-yes { background:var(--green); color:#08331f; }
   .btn-no { background:var(--card3); color:var(--text); }
   .checkin-result { margin-top:10px; font-size:15px; }
+  /* Today / Yesterday switch: catch up on what you forgot to check off last night */
+  .dayswitch { display:flex; gap:4px; padding:4px; margin:4px 0 12px; background:var(--card);
+               border:1px solid var(--line); border-radius:12px; }
+  .dayswitch button { flex:1; background:none; border:none; color:var(--muted); font-family:inherit;
+                      font-size:14px; font-weight:600; padding:8px; border-radius:9px; cursor:pointer; }
+  .dayswitch button.on { background:var(--accent-soft); color:var(--accent); }
+  .ydnote { font-size:13px; color:var(--muted); padding:0 4px 10px; }
+  .addday.fix { color:var(--accent); }
 
   /* ---- chrome ---- */
   .fab { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 78px); right:18px;
@@ -288,6 +296,12 @@
 </div>
 
 <div id="app" style="display:none">
+  <div class="dayswitch">
+    <button id="ds-0" class="on" onclick="setViewDay(0)">Today</button>
+    <button id="ds-1" onclick="setViewDay(-1)">Yesterday</button>
+  </div>
+  <div class="ydnote" id="ydNote" style="display:none">Catching up on yesterday: anything you tap here is saved for yesterday.</div>
+
   <div class="card now-card" id="nowCard" style="display:none">
     <h2>Right now</h2>
     <div class="now-line" id="nowLine"></div>
@@ -295,12 +309,12 @@
   </div>
 
   <div class="card" id="scheduleCard" style="display:none">
-    <h2>Today's schedule</h2>
+    <h2 id="schedHead">Today's schedule</h2>
     <div id="scheduleList"></div>
   </div>
 
   <div class="card" id="dailyCard" style="display:none">
-    <h2>Today's tasks</h2>
+    <h2 id="dailyHead">Today's tasks</h2>
     <div id="dailyList"></div>
   </div>
 
@@ -420,7 +434,7 @@
       <option value="full">Yes &mdash; full session (Did it / Skipped)</option>
       <option value="short">Yes &mdash; Short Morning</option>
       <option value="walk">Yes &mdash; walk</option>
-      <option value="morning">Morning walk &mdash; Regular / Short + stretch (not counted)</option>
+      <option value="morning">Yes &mdash; morning walk (Regular / Short + stretch)</option>
     </select>
     <label>Nag me if not done by (optional — sends a push)</label>
     <input id="addNag" type="time">
@@ -542,8 +556,8 @@ async function api(path, opts = {}) {
 
 async function load() {
   const c = cfg();
-  document.getElementById('dateLine').textContent =
-    new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  dayOffset = 0;   // reopening the app always lands on today
+  showDayLine();
   const h = new Date().getHours();
   const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   document.getElementById('greeting').textContent = part + (c.name ? ', ' + c.name : '');
@@ -584,7 +598,27 @@ async function load() {
   }
 }
 
-const doneToday = id => comps.find(x => x.task_id === id && x.day === todayStr());
+// The Today tab can show yesterday instead, so a forgotten evening check-off
+// (screen-time, the night routine) can still be logged the next day.
+// Every check-off on the Today tab is saved for viewStr(), not always today.
+let dayOffset = 0;   // 0 = today, -1 = yesterday
+const viewDate = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + dayOffset); return d; };
+const viewStr = () => isoOf(viewDate());
+
+function showDayLine() {
+  const s = viewDate().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  document.getElementById('dateLine').textContent = dayOffset ? 'Yesterday · ' + s : s;
+}
+
+function setViewDay(n) {
+  dayOffset = n;
+  [0, 1].forEach(i => document.getElementById('ds-' + i).classList.toggle('on', -i === n));
+  showDayLine();
+  render();
+  window.scrollTo(0, 0);
+}
+
+const doneToday = id => comps.find(x => x.task_id === id && x.day === viewStr());
 
 function streak(id) {
   const days = new Set(comps.filter(x => x.task_id === id && x.value !== 'no').map(x => x.day));
@@ -619,7 +653,7 @@ function dueOn(t, when, strictOnce) {
   }
   return false;
 }
-function isDueToday(t) { return dueOn(t, new Date(), false); }
+function isDueToday(t) { return dueOn(t, viewDate(), dayOffset !== 0); }
 
 const WDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const isoDow = d => (d.getDay() + 6) % 7;            // 0 = Monday ... 6 = Sunday
@@ -674,8 +708,13 @@ function render() {
   const timed = sched.filter(t => t.time_of_day).map(t => ({...t, min: parseInt(t.time_of_day) * 60 + parseInt(t.time_of_day.split(':')[1])}));
   const upcoming = timed.filter(t => t.min >= nowMin && !doneToday(t.id));
   const current = [...timed].reverse().find(t => t.min <= nowMin && !doneToday(t.id));
+  const past = dayOffset !== 0;
+  const word = past ? 'Yesterday' : 'Today';
+  document.getElementById('ydNote').style.display = past ? 'block' : 'none';
+  document.getElementById('schedHead').textContent = word + "'s schedule";
+  document.getElementById('dailyHead').textContent = word + "'s tasks";
   const nc = document.getElementById('nowCard');
-  if (current || upcoming.length) {
+  if (!past && (current || upcoming.length)) {
     nc.style.display = 'block';
     document.getElementById('nowLine').textContent = current
       ? current.title + ' (' + fmtTime(current.time_of_day) + ')' : 'Nothing due right now';
@@ -687,7 +726,7 @@ function render() {
   renderList('dailyCard', 'dailyList', daily, false);
 
   const uc = document.getElementById('upcomingCard');
-  if (upcoming5.length) {
+  if (upcoming5.length && !past) {
     uc.style.display = 'block';
     document.getElementById('upcomingList').innerHTML = upcoming5.map(t =>
       '<div class="task"><span class="time">' +
@@ -706,10 +745,10 @@ function render() {
     if (done) {
       body.innerHTML = '<div class="checkin-result">' +
         (done.value === 'yes'
-          ? '&#10003; Stayed under your limit today. Streak: <b style="color:var(--amber)">' + streak(checkin.id) + ' day(s) &#128293;</b>'
-          : 'Logged. Tomorrow is a fresh start.') + '</div>';
+          ? '&#10003; Stayed under your limit ' + word.toLowerCase() + '. Streak: <b style="color:var(--amber)">' + streak(checkin.id) + ' day(s) &#128293;</b>'
+          : 'Logged. ' + (past ? 'Today' : 'Tomorrow') + ' is a fresh start.') + '</div>';
     } else {
-      body.innerHTML = '<div class="muted">' + checkin.title + '</div>' +
+      body.innerHTML = '<div class="muted">' + (past ? checkin.title.replace(/\btoday\b/i, 'yesterday') : checkin.title) + '</div>' +
         '<div class="checkin-btns">' +
         '<button class="btn-yes" onclick="checkinAnswer(\'' + checkin.id + '\',\'yes\')">Yes &#128170;</button>' +
         '<button class="btn-no" onclick="checkinAnswer(\'' + checkin.id + '\',\'no\')">Not today</button></div>';
@@ -752,7 +791,7 @@ async function toggle(id) {
   const done = doneToday(id);
   try {
     if (!done) {
-      const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr() }) });
+      const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: viewStr() }) });
       comps.push(rows[0]);
     } else if (done.value !== 'skip') {
       await api('completions?id=eq.' + done.id, { method: 'PATCH', body: JSON.stringify({ value: 'skip' }) });
@@ -762,7 +801,7 @@ async function toggle(id) {
       await api('completions?id=eq.' + done.id, { method: 'DELETE' });
       comps = comps.filter(x => x.id !== done.id);
     }
-    render();
+    render(); renderWeek();
   } catch (e) { toast('Save failed: ' + e.message.slice(0, 80)); }
 }
 
@@ -942,8 +981,8 @@ async function delItem(id) {
 
 async function checkinAnswer(id, val) {
   try {
-    const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr(), value: val }) });
-    comps.push(rows[0]); render();
+    const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: viewStr(), value: val }) });
+    comps.push(rows[0]); render(); renderWeek();
   } catch (e) { toast('Save failed'); }
 }
 
@@ -958,6 +997,8 @@ function renderWeek() {
   for (let i = 0; i < 7; i++) { const d = new Date(start); d.setDate(d.getDate() + i); days.push(d); }
 
   const fmtD = d => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const yd = new Date(today); yd.setDate(yd.getDate() - 1);
+  const yIso = isoOf(yd);
   document.getElementById('weekRange').textContent = fmtD(days[0]) + ' \u2013 ' + fmtD(days[6]);
   document.getElementById('weekLegend').innerHTML =
     Object.keys(AREAS).map(a => '<span class="lab ' + a + '" style="margin:0">' + AREAS[a] + '</span>').join('');
@@ -979,6 +1020,7 @@ function renderWeek() {
         (iso === todayStr() ? '<span class="todaytag">TODAY</span>' : '') + '</span>' +
         '<span class="ddate">' + fmtD(d) + '</span></div>' +
       '<div class="blocks">' + rows + '</div>' +
+      (iso === yIso ? '<button class="addday fix" onclick="switchTab(\'today\'); setViewDay(-1)">Check off what you missed yesterday &rsaquo;</button>' : '') +
       '<button class="addday" onclick="openDay(\'' + iso + '\')">+ Add to ' + dayName + '</button>' +
       '</div>';
   }).join('');
@@ -1000,9 +1042,9 @@ function weekMark(t, iso) {
 //   'full'    -> Bowflex Push / Pull / Legs (picker: Did it, Skipped)
 //   'short'   -> a planned Short Morning    (picker: Done, Skipped)
 //   'walk'    -> the weekend family walk    (picker: Done, Short Morning, Skipped)
-//   'morning' -> the Mon/Thu/Fri morning walk (picker: Regular walk, Short walk +
-//                stretch, Skipped). Not counted in the workout tally, so those
-//                days still count as ONE workout each (the Bowflex session).
+//   'morning' -> the weekday morning walk   (picker: Regular walk, Short walk +
+//                stretch, Skipped). A regular walk counts as a walk, a short
+//                one as a Short Morning.
 // The result lives in completions.value: null = done as planned,
 // 'short' = swapped for a Short Morning, 'skip' = skipped. Nothing is ever
 // thrown away, so every past month and year stays reviewable.
@@ -1014,7 +1056,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 async function loadWorkoutTasks() {
   // Fails quietly (empty list) until update_7_8_all_at_once.sql has added the column.
   try {
-    return await api('tasks?workout=in.(full,short,walk)&select=id,title,kind,recurrence,anchor_date,weekdays,workout,retired_on,active');
+    return await api('tasks?workout=not.is.null&select=id,title,kind,recurrence,anchor_date,weekdays,workout,retired_on,active');
   } catch (e) { return []; }
 }
 
@@ -1029,6 +1071,7 @@ function resultOf(t, c) {
   if (!c) return 'none';
   if (c.value === 'skip') return 'skip';
   if (c.value === 'short') return 'short';
+  if (t.workout === 'morning') return 'walk';
   return t.workout || 'full';
 }
 
@@ -1058,7 +1101,7 @@ function openWorkout(id) {
       '<span>' + o[1] + '<span class="sub">' + o[2] + '</span></span></button>').join('') +
     (cur ? '<button class="clear" onclick="setWorkout(\'clear\')">Clear today\u2019s entry</button>' : '');
   const m = monthSoFar();
-  document.getElementById('wkMonth').textContent = m.planned && kind !== 'morning'
+  document.getElementById('wkMonth').textContent = m.planned
     ? MONTHS[new Date().getMonth()] + ' so far: ' + m.done + ' done (' + m.short + ' short) \u00b7 ' + m.skip + ' skipped'
     : '';
   document.getElementById('wkModal').classList.add('open');
@@ -1078,7 +1121,7 @@ async function setWorkout(val) {
         await api('completions?id=eq.' + cur.id, { method: 'PATCH', body: JSON.stringify({ value }) });
         cur.value = value;
       } else {
-        const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: todayStr(), value }) });
+        const rows = await api('completions', { method: 'POST', body: JSON.stringify({ task_id: id, day: viewStr(), value }) });
         comps.push(rows[0]);
       }
     }
@@ -1186,9 +1229,9 @@ function renderProgress() {
 
   const tile = (k, v, n) => '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="n">' + n + '</div></div>';
   let h = '<div class="tiles">' +
-    (cm ? tile(MONTHS[now.getMonth()] + ' so far', cm.done + '<small> / ' + cm.planned + '</small>', pct(cm) + ' of planned mornings')
+    (cm ? tile(MONTHS[now.getMonth()] + ' so far', cm.done + '<small> / ' + cm.planned + '</small>', pct(cm) + ' of planned')
         : tile('Best month', best ? best[0] : '\u2014', best ? MONTHS[best[1]] : 'nothing logged')) +
-    tile(progYear + (isThisYear ? ' to date' : ' total'), yr.done + '<small> / ' + yr.planned + '</small>', pct(yr) + ' of planned mornings') +
+    tile(progYear + (isThisYear ? ' to date' : ' total'), yr.done + '<small> / ' + yr.planned + '</small>', pct(yr) + ' of planned') +
     tile('Short Mornings', yr.short, 'counted as done') +
     tile('Skipped', yr.skip, yr.none ? yr.none + ' more not logged' : 'nothing left unlogged') +
     '</div>';
@@ -1210,7 +1253,7 @@ function renderProgress() {
       '<span class="cnt">' + (total ? '<b>' + o.done + '</b><span> / ' + o.planned + '</span>' : '<span>\u2014</span>') + '</span>' +
       (open ? '<div class="mdetail">' +
         segs.concat('none').map(k => WK_NAME[k] + ' <b>' + o[k] + '</b>').join(' \u00b7 ') +
-        '<br>' + pct(o) + ' of ' + o.planned + ' planned mornings</div>' : '') +
+        '<br>' + pct(o) + ' of ' + o.planned + ' planned</div>' : '') +
       '</div>';
   });
   h += '</div>';

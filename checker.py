@@ -115,10 +115,9 @@ def due_today(t, today):
 
 
 def workout_tasks():
-    """Every workout task, retired ones included. Empty until update_7 has run.
-    The 'morning' walk has its own Regular / Short picker but isn't counted here."""
+    """Every workout task, retired ones included. Empty until update_7 has run."""
     try:
-        return sb_get("tasks?workout=in.(full,short,walk)&select=id,recurrence,anchor_date,weekdays,workout,retired_on")
+        return sb_get("tasks?workout=not.is.null&select=id,recurrence,anchor_date,weekdays,workout,retired_on")
     except urllib.error.HTTPError:
         return []
 
